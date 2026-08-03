@@ -42,13 +42,12 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
   let wpmInterval = null;
   let visualizerInterval = null;
   // Advanced tracking state
-  let transcriptAccumulator = ''; // Accumulates transcript across recognition sessions
   let lastMatchTime = 0; // Timestamp of last successful match
   let matchConfidence = 0; // Current confidence 0-100
-  let debounceTimer = null; // Debounce timer for transcript processing
   let restartAttempts = 0; // For exponential backoff on restart
   let analyserNode = null; // For real mic visualizer
   let micDataArray = null; // Uint8Array for analyser
+  let lastProcessedText = ''; // Avoid duplicate processing
   // Fallback: old worker-based system
   let trackingWorker = null;
   let isTranscribing = false;
@@ -1677,7 +1676,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
   });
 
-  // ============ VOICE TRACKING (Advanced Fuzzy Matching Engine) ============
+  // ============ VOICE TRACKING (Streaming Greedy Engine) ============
   
   // Update confidence UI
   const updateConfidenceUI = (confidence) => {
@@ -1687,23 +1686,21 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     if (dot && val) {
       val.textContent = matchConfidence + '%';
       if (matchConfidence >= 70) {
-        dot.style.background = '#22c55e'; // green
+        dot.style.background = '#22c55e';
       } else if (matchConfidence >= 40) {
-        dot.style.background = '#f59e0b'; // amber
+        dot.style.background = '#f59e0b';
       } else {
-        dot.style.background = '#ef4444'; // red
+        dot.style.background = '#ef4444';
       }
     }
   };
 
-  // Update status text
   const updateTrackingStatus = (text) => {
     const el = container.querySelector('#tracking-status-text');
     if (el) el.textContent = text;
   };
 
   const highlightWord = (index) => {
-    // Remove active from previous
     container.querySelectorAll('.word-highlight-active').forEach(el => {
       el.classList.remove('word-highlight-active');
       el.classList.add('word-highlight-done');
@@ -1712,7 +1709,6 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       const span = container.querySelector('#' + trackingWords[index].id);
       if (span) {
         span.classList.add('word-highlight-active');
-        // Smart scroll: only scroll if outside middle 50%
         const rect = span.getBoundingClientRect();
         const viewHeight = window.innerHeight;
         if (rect.top < viewHeight * 0.25 || rect.bottom > viewHeight * 0.75) {
@@ -1722,106 +1718,95 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
   };
 
-  // === Advanced Matching Engine ===
+  // === CORE: Streaming Greedy Matcher ===
+  // Process transcript IMMEDIATELY — no debouncing, no accumulation
   const matchTranscriptToWords = (transcript) => {
     if (!transcript || trackingWordIndex >= trackingWords.length) return;
     
-    // Accumulate transcript for better matching
-    transcriptAccumulator = (transcriptAccumulator + ' ' + transcript).trim();
-    // Keep only last ~80 words in accumulator to prevent memory issues
-    const accWords = transcriptAccumulator.split(/\s+/);
-    if (accWords.length > 80) {
-      transcriptAccumulator = accWords.slice(-80).join(' ');
-    }
+    // Deduplicate — skip if we just processed the exact same text
+    if (transcript === lastProcessedText) return;
+    lastProcessedText = transcript;
     
-    const spoken = stripDiacritics(transcriptAccumulator).split(/\s+/).filter(Boolean);
+    const spoken = stripDiacritics(transcript).split(/\s+/).filter(Boolean);
     if (!spoken.length) return;
 
     let advanced = false;
-    // Use last 20 words for matching (more context than before)
-    const recentWords = spoken.slice(-20);
 
-    // === Strategy 1: Backtracking Detection ===
-    // Check if user went back to re-read earlier words
-    const backtrackLimit = Math.max(0, trackingWordIndex - 20);
-    if (recentWords.length >= 2) {
-      const lastTwo = recentWords.slice(-3); // Check last 3 words
-      for (let i = trackingWordIndex - 2; i >= backtrackLimit; i--) {
-        let seqScore = 0;
-        let seqCount = 0;
-        for (let k = 0; k < Math.min(lastTwo.length, trackingWords.length - i); k++) {
-          const score = wordsMatch(lastTwo[k], trackingWords[i + k]?.cleanText || '');
-          if (score >= 0.5) {
-            seqScore += score;
-            seqCount++;
-          }
+    // --- Backtracking: only if last 3 spoken words match an earlier position ---
+    if (spoken.length >= 3 && trackingWordIndex >= 3) {
+      const tail = spoken.slice(-3);
+      const backLimit = Math.max(0, trackingWordIndex - 15);
+      for (let i = trackingWordIndex - 3; i >= backLimit; i--) {
+        let hits = 0;
+        for (let k = 0; k < 3; k++) {
+          if (wordsMatch(tail[k], trackingWords[i + k]?.cleanText || '') >= 0.5) hits++;
         }
-        // Need at least 2 consecutive word matches for backtrack
-        if (seqCount >= 2 && seqScore / seqCount >= 0.6) {
-          // Un-mark words
+        if (hits >= 2) {
           for (let j = i; j < trackingWordIndex; j++) {
             const cur = container.querySelector('#' + trackingWords[j].id);
-            if (cur) {
-              cur.classList.remove('word-highlight-done');
-              cur.classList.remove('word-highlight-active');
-            }
+            if (cur) { cur.classList.remove('word-highlight-done', 'word-highlight-active'); }
           }
           wordsReadCount = Math.max(0, wordsReadCount - (trackingWordIndex - i));
-          trackingWordIndex = i + seqCount;
+          trackingWordIndex = i;
           advanced = true;
-          updateConfidenceUI(seqScore / seqCount * 100);
-          updateTrackingStatus('🔄 تم الرجوع للتصحيح');
-          // Clear accumulator after backtrack
-          transcriptAccumulator = '';
+          updateTrackingStatus('🔄 رجوع');
           break;
         }
       }
     }
 
-    // === Strategy 2: Forward Matching with Sliding Window ===
+    // --- Forward Greedy Matching ---
+    // Scan ALL spoken words and try to advance the pointer
     if (!advanced) {
-      let bestMatchIdx = -1;
+      const lookahead = Math.min(trackingWordIndex + 8, trackingWords.length);
+      let bestIdx = -1;
       let bestScore = 0;
-      let bestAdvance = 0;
 
-      // Scan forward up to 10 words ahead (handles skipping/fast reading)
-      const lookaheadLimit = Math.min(trackingWordIndex + 10, trackingWords.length);
-      
-      for (let i = trackingWordIndex; i < lookaheadLimit; i++) {
-        // Try matching with sliding windows of different sizes
-        for (let windowSize = Math.min(4, recentWords.length); windowSize >= 1; windowSize--) {
-          for (let wStart = Math.max(0, recentWords.length - windowSize - 3); wStart <= recentWords.length - windowSize; wStart++) {
-            const windowWords = recentWords.slice(wStart, wStart + windowSize);
-            const seq = sequenceMatch(windowWords, trackingWords, i);
-            
-            if (seq.advance >= 1 && seq.score > bestScore) {
-              // For single word match, require higher confidence
-              if (seq.advance === 1 && seq.score < 0.6) continue;
-              bestScore = seq.score;
-              bestMatchIdx = i;
-              bestAdvance = Math.max(seq.advance, 1);
-            }
+      // Check every spoken word against expected positions
+      for (let si = 0; si < spoken.length; si++) {
+        const w = spoken[si];
+        if (!w || w.length < 2) continue;
+        
+        for (let ei = trackingWordIndex; ei < lookahead; ei++) {
+          const expected = trackingWords[ei]?.cleanText || '';
+          if (!expected) continue;
+          
+          const score = wordsMatch(w, expected);
+          
+          // Position-aware threshold:
+          // Current word → very lenient (0.40)
+          // Next 2 words → moderate (0.50)  
+          // Further ahead → strict (0.70)
+          const gap = ei - trackingWordIndex;
+          const threshold = gap === 0 ? 0.40 : gap <= 2 ? 0.50 : 0.70;
+          
+          if (score >= threshold && (ei > bestIdx || (ei === bestIdx && score > bestScore))) {
+            bestIdx = ei;
+            bestScore = score;
           }
         }
-        
-        // Also try individual word matching (fallback)
-        if (bestMatchIdx === -1) {
-          for (const w of recentWords) {
-            const score = wordsMatch(w, trackingWords[i]?.cleanText || '');
-            if (score >= 0.55 && score > bestScore) {
-              // For single words, require higher threshold for non-adjacent words
-              if (i > trackingWordIndex + 2 && score < 0.7) continue;
-              bestScore = score;
-              bestMatchIdx = i;
-              bestAdvance = 1;
+      }
+
+      // Also try 2-word sequence matching for better accuracy
+      if (spoken.length >= 2) {
+        for (let si = spoken.length - 2; si >= Math.max(0, spoken.length - 8); si--) {
+          for (let ei = trackingWordIndex; ei < Math.min(lookahead, trackingWords.length - 1); ei++) {
+            const s1 = wordsMatch(spoken[si], trackingWords[ei]?.cleanText || '');
+            const s2 = wordsMatch(spoken[si + 1], trackingWords[ei + 1]?.cleanText || '');
+            if (s1 >= 0.40 && s2 >= 0.40) {
+              const avg = (s1 + s2) / 2;
+              if (ei + 1 > bestIdx || (ei + 1 === bestIdx && avg > bestScore)) {
+                bestIdx = ei + 1;
+                bestScore = avg;
+              }
             }
           }
         }
       }
 
-      if (bestMatchIdx !== -1 && bestScore >= 0.5) {
-        // Mark all words from current to matched as done
-        for (let i = trackingWordIndex; i < bestMatchIdx + bestAdvance; i++) {
+      if (bestIdx >= trackingWordIndex) {
+        // Mark all words from current to bestIdx as done
+        for (let i = trackingWordIndex; i <= bestIdx; i++) {
           const cur = container.querySelector('#' + trackingWords[i].id);
           if (cur) {
             cur.classList.remove('word-highlight-active');
@@ -1829,22 +1814,18 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
           }
           wordsReadCount++;
         }
-        trackingWordIndex = bestMatchIdx + bestAdvance;
+        trackingWordIndex = bestIdx + 1;
         advanced = true;
         lastMatchTime = Date.now();
         updateConfidenceUI(bestScore * 100);
-        updateTrackingStatus('🎙️ جاري الاستماع...');
-        
-        // Clear accumulator after successful match to avoid stale data
-        transcriptAccumulator = '';
+        updateTrackingStatus('🎙️ جاري التتبع...');
       }
     }
 
-    // Update confidence decay if no match for a while
-    if (!advanced) {
-      const timeSinceMatch = Date.now() - lastMatchTime;
-      if (timeSinceMatch > 5000) {
-        updateConfidenceUI(Math.max(20, matchConfidence - 5));
+    // Confidence decay after 4s without match
+    if (!advanced && Date.now() - lastMatchTime > 4000) {
+      updateConfidenceUI(Math.max(15, matchConfidence - 3));
+      if (Date.now() - lastMatchTime > 8000) {
         updateTrackingStatus('🔍 في انتظار التعرف...');
       }
     }
@@ -1873,7 +1854,6 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       const animate = () => {
         if (!isTracking || !analyserNode) return;
         analyserNode.getByteFrequencyData(micDataArray);
-        // Map frequency bins to bars
         const binSize = Math.floor(micDataArray.length / bars.length);
         bars.forEach((bar, i) => {
           let sum = 0;
@@ -1888,7 +1868,6 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       };
       animate();
     } catch (e) {
-      // Fallback to random visualizer
       startFakeVisualizer();
     }
   };
@@ -1898,20 +1877,19 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     visualizerInterval = setInterval(() => {
       if (!isTracking) return;
       bars.forEach(bar => {
-        const h = Math.max(3, Math.random() * 18);
-        bar.style.height = `${h}px`;
+        bar.style.height = `${Math.max(3, Math.random() * 18)}px`;
       });
     }, 120);
   };
 
-  // === Web Speech API (Enhanced) ===
+  // === Web Speech API (Zero-Latency Streaming) ===
   const startWebSpeechTracking = () => {
     if (!hasWebSpeech) {
       showToastLocal('⚠️ متصفحك لا يدعم التعرف الصوتي. استخدم Chrome أو Edge');
       return false;
     }
     
-    // Get mic stream for real visualizer
+    // Get mic stream for visualizer
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       mediaStream = stream;
       audioContext = new AudioContext();
@@ -1924,10 +1902,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = speechLangSelect.value || 'ar-SA';
-    recognition.maxAlternatives = 5;
-
-    let interimBuffer = '';
-    let lastFinalTranscript = '';
+    recognition.maxAlternatives = 3;
 
     recognition.onstart = () => {
       isTracking = true;
@@ -1938,47 +1913,22 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       updateTrackingStatus('🎙️ جاري الاستماع...');
     };
 
+    // ZERO-LATENCY: Process every result immediately — no debouncing
     recognition.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-      
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        // Use best alternative + merge all alternatives for better coverage
+        
         if (result.isFinal) {
-          // Collect all alternatives for final results
-          let allAlts = '';
+          // Final result: process ALL alternatives for best coverage
           for (let j = 0; j < result.length; j++) {
-            allAlts += result[j].transcript + ' ';
+            const text = result[j].transcript.trim();
+            if (text) matchTranscriptToWords(text);
           }
-          finalTranscript += allAlts;
         } else {
-          // For interim, use only best result
-          interimTranscript += result[0].transcript + ' ';
+          // Interim result: process IMMEDIATELY for real-time feel
+          const text = result[0].transcript.trim();
+          if (text) matchTranscriptToWords(text);
         }
-      }
-
-      // Process final results immediately with debounce
-      if (finalTranscript.trim() && finalTranscript.trim() !== lastFinalTranscript) {
-        lastFinalTranscript = finalTranscript.trim();
-        // Debounce: wait 200ms to batch rapid results
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          matchTranscriptToWords(lastFinalTranscript);
-        }, 200);
-      }
-
-      // Process interim results with longer debounce (only if no final result for a while)
-      if (interimTranscript.trim() && !finalTranscript.trim()) {
-        interimBuffer = interimTranscript.trim();
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          // Only use interim if it's substantial enough (at least 2 words)
-          const words = interimBuffer.split(/\s+/).filter(Boolean);
-          if (words.length >= 2) {
-            matchTranscriptToWords(interimBuffer);
-          }
-        }, 600); // Longer debounce for interim results
       }
     };
 
@@ -1989,34 +1939,26 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
         return;
       }
       if (e.error === 'network') {
-        updateTrackingStatus('⚠️ خطأ في الشبكة، جاري إعادة المحاولة...');
+        updateTrackingStatus('⚠️ خطأ في الشبكة...');
       }
       if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        console.warn('Speech recognition error:', e.error);
+        console.warn('Speech error:', e.error);
       }
     };
 
     recognition.onend = () => {
-      // Auto-restart with exponential backoff
+      // Fast restart — 100ms fixed delay (no exponential backoff)
       if (isTracking) {
-        restartAttempts++;
-        const delay = Math.min(300 * Math.pow(1.5, Math.min(restartAttempts - 1, 5)), 2000);
         setTimeout(() => {
           try { 
-            if (isTracking && recognition) {
-              recognition.start();
-              restartAttempts = Math.max(0, restartAttempts - 1); // Decay on success
-            }
+            if (isTracking && recognition) recognition.start();
           } catch (e) {
-            console.warn('Restart error', e);
-            // Try again with longer delay
-            if (isTracking) {
-              setTimeout(() => {
-                try { if (isTracking && recognition) recognition.start(); } catch (e2) {}
-              }, 1000);
-            }
+            // Retry once after 500ms
+            setTimeout(() => {
+              try { if (isTracking && recognition) recognition.start(); } catch (e2) {}
+            }, 500);
           }
-        }, delay);
+        }, 100);
       }
     };
 
@@ -2029,7 +1971,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
   };
 
-  // === Fallback: Sidecar/Worker-based tracking ===
+  // === Fallback: Worker-based tracking ===
   const setupTrackingWorker = () => {
     if (!trackingWorker) {
       try {
@@ -2064,8 +2006,6 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       source.connect(scriptProcessor);
       scriptProcessor.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
-      // Start real visualizer
       startRealVisualizer();
       
       audioBuffer = [];
@@ -2076,13 +2016,10 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
         const channelData = e.inputBuffer.getChannelData(0);
         audioBuffer.push(new Float32Array(channelData));
         totalSamples += channelData.length;
-        
-        // Keep last 5 seconds of audio (16000 * 5 = 80000)
         if (audioBuffer.length > 20) {
           totalSamples -= audioBuffer[0].length;
           audioBuffer.shift();
         }
-        
         chunkCount++;
         if (chunkCount >= 6 && !isTranscribing && trackingWorker && audioBuffer.length > 8) {
           chunkCount = 0;
@@ -2105,9 +2042,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
 
   const stopTracking = () => {
     isTracking = false;
-    // Clear timers
     if (wpmInterval) clearInterval(wpmInterval);
-    if (debounceTimer) clearTimeout(debounceTimer);
     if (visualizerInterval) {
       if (typeof visualizerInterval === 'number' && visualizerInterval > 1000) {
         cancelAnimationFrame(visualizerInterval);
@@ -2117,14 +2052,11 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
     wpmInterval = null;
     visualizerInterval = null;
-    debounceTimer = null;
 
-    // Stop Web Speech
     if (recognition) {
       try { recognition.stop(); recognition.abort(); } catch (e) {}
       recognition = null;
     }
-    // Stop mic/audio
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
     if (analyserNode) { try { analyserNode.disconnect(); } catch (e) {} }
     if (scriptProcessor) scriptProcessor.disconnect();
@@ -2132,17 +2064,13 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     audioBuffer = [];
     mediaStream = null; audioContext = null; scriptProcessor = null;
     analyserNode = null; micDataArray = null;
-
-    // Reset tracking state
-    transcriptAccumulator = '';
+    lastProcessedText = '';
     restartAttempts = 0;
     matchConfidence = 0;
 
     voiceBtn.classList.remove('recording');
     trackingStatusBar.classList.remove('active');
     voiceIcon.innerHTML = `<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>`;
-    
-    // Reset visualizer bars
     container.querySelectorAll('#mic-visualizer .bar').forEach(bar => {
       bar.style.height = '3px';
     });
@@ -2155,19 +2083,15 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       el.classList.remove('word-highlight-done', 'word-highlight-active');
     });
 
-    // Reset advanced tracking state
-    transcriptAccumulator = '';
     lastMatchTime = Date.now();
+    lastProcessedText = '';
     matchConfidence = 100;
     restartAttempts = 0;
-
-    // Reset metrics
     trackingStartTime = Date.now();
     wordsReadCount = 0;
     container.querySelector('#wpm-counter').textContent = '0';
     updateConfidenceUI(100);
     
-    // WPM Counter Interval
     wpmInterval = setInterval(() => {
       if (!isTracking) return;
       const elapsedMinutes = (Date.now() - trackingStartTime) / 60000;
@@ -2176,16 +2100,14 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }, 1000);
 
     const model = state.aiModel || 'webspeech';
-    if (model === 'webspeech' || model === '' ) {
+    if (model === 'webspeech' || model === '') {
       if (!startWebSpeechTracking()) {
-        // Fallback to worker
         startWorkerTracking();
       }
     } else {
       startWorkerTracking();
     }
 
-    // Update icon to "stop" style
     voiceIcon.innerHTML = `<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>`;
   };
 
