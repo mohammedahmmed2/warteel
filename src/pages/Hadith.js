@@ -2,13 +2,14 @@ import { t } from '../utils/i18n.js';
 import { exportHadithToImage } from '../utils/hadithImageGenerator.js';
 import { openImageThemeModal } from '../components/ImageThemeModal.js';
 
-export function HadithPage(navigate) {
+export function HadithPage(navigate, params = null) {
   const container = document.createElement('div');
   container.className = 'hadith-page-wrapper animate-fade-in';
 
-  let currentBook = 'bukhari';
+  let currentBook = (params && params.book) || 'bukhari';
   let currentChapter = 'all';
-  let searchQuery = '';
+  let searchQuery = (params && (params.query || params.q || params.search)) || '';
+  let targetHadithId = (params && params.id) ? parseInt(params.id) : null;
   let page = 1;
   const PAGE_SIZE = 15;
 
@@ -266,7 +267,10 @@ export function HadithPage(navigate) {
         <div class="app-bar-icon" id="back-btn" style="cursor:pointer;">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
         </div>
-        <div class="app-title" style="font-weight: 700; font-size: 1.2rem;">${t('hadith')}</div>
+        <div class="app-title" style="font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+          <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 28px;" />
+          <span>${t('hadith')}</span>
+        </div>
         <div class="app-bar-icon" style="opacity: 0;"></div>
       </div>
 
@@ -307,7 +311,7 @@ export function HadithPage(navigate) {
       ` : `
         <div class="hadith-grid">
           ${paginated.map(h => `
-            <div class="hadith-card-premium">
+            <div class="hadith-card-premium" id="hadith-card-${h.number || h.hadithnumber || 1}">
               <div class="hadith-card-header">
                 <span class="hadith-number-badge">رقم ${h.number || h.hadithnumber || 1}</span>
                 ${h.narrator ? `<span class="hadith-narrator">عن ${h.narrator}</span>` : ''}
@@ -439,6 +443,16 @@ export function HadithPage(navigate) {
         }
       });
     });
+    if (targetHadithId) {
+      setTimeout(() => {
+        const el = container.querySelector(`#hadith-card-${targetHadithId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.border = '2px solid var(--accent)';
+          el.style.boxShadow = '0 0 15px rgba(217, 138, 68, 0.4)';
+        }
+      }, 400);
+    }
   };
 
   loadBook();

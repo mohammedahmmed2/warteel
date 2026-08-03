@@ -1,0 +1,10 @@
+# Robots.txt for Warteel (وَرْتِيل) Quran App
+User-agent: *
+Allow: /
+Allow: /?surah=*
+Allow: /?page=*
+Allow: /?juz=*
+Allow: /#quran-reader*
+
+# Sitemap Location
+Sitemap: https://warteel.app/sitemap.xml

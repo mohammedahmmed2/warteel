@@ -48,8 +48,9 @@ export function PrayerTimesPage(navigate) {
                 <div class="boxed-icon-btn back-btn" style="z-index: 10;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </div>
-                <div class="app-title" style="flex:1; text-align:center; font-size:1.2rem; font-weight:700;">
-                    ${t('prayer_times') || 'مواقيت الصلاة'}
+                <div class="app-title" style="flex:1; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size:1.2rem; font-weight:700;">
+                    <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 28px;" />
+                    <span>${t('prayer_times') || 'مواقيت الصلاة'}</span>
                 </div>
                 <div style="width: 44px; height: 44px;"></div>
             </div>

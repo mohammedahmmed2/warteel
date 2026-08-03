@@ -16,7 +16,10 @@ export function QuranListPage(navigate, params = null) {
       <div class="app-bar-icon" onclick="window.navigateHome()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
       </div>
-      <div class="app-title">${t('nav_quran')}</div>
+      <div class="app-title" style="display: flex; align-items: center; gap: 0.5rem;">
+        <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 32px;" />
+        <span>${t('nav_quran')}</span>
+      </div>
       <div class="app-bar-icon" id="search-surah-btn" style="cursor: pointer;" title="${t('search_quran')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       </div>

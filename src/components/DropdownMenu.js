@@ -27,9 +27,9 @@ export function DropdownMenu(navigate, currentPage) {
     
     <div class="dropdown-menu-content" id="global-menu-content">
       <div class="dropdown-header">
-        <div class="dropdown-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path><circle cx="15" cy="8" r="1" fill="currentColor"/></svg>
-          ${t('app_title')}
+        <div class="dropdown-title" style="display: flex; align-items: center; gap: 0.5rem;">
+          <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 32px;" />
+          <span>${t('app_title')}</span>
         </div>
       </div>
       <div class="dropdown-items">

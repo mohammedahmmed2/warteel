@@ -33,7 +33,7 @@ function clearRecentSearches() {
   localStorage.removeItem(RECENT_SEARCHES_KEY);
 }
 
-export function openSearchModal(navigate) {
+export function openSearchModal(navigate, initialQuery = null) {
   navigateFn = navigate;
   if (!modalElement) {
     createSearchModal();
@@ -43,18 +43,28 @@ export function openSearchModal(navigate) {
   document.body.style.overflow = 'hidden';
   
   const searchInput = modalElement.querySelector('#quran-search-modal-input');
+  const clearBtn = modalElement.querySelector('#quran-search-clear-btn');
   if (searchInput) {
-    searchInput.value = '';
+    searchInput.value = initialQuery || '';
+    if (clearBtn) clearBtn.style.display = initialQuery ? 'flex' : 'none';
     setTimeout(() => searchInput.focus(), 150);
   }
 
   // Pre-fetch quran data
   getQuranData(state.mushafEdition).then(data => {
     cachedQuranData = data;
-    renderDefaultView();
+    if (initialQuery) {
+      performSearch(initialQuery);
+    } else {
+      renderDefaultView();
+    }
   }).catch(() => {});
 
-  renderDefaultView();
+  if (initialQuery) {
+    performSearch(initialQuery);
+  } else {
+    renderDefaultView();
+  }
 }
 
 export function closeSearchModal() {
@@ -73,10 +83,13 @@ function createSearchModal() {
   modalElement.innerHTML = `
     <div class="quran-search-modal-container" style="border-radius: var(--radius-lg); background: var(--bg-card); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
       <!-- Modal Header -->
-      <div class="quran-search-modal-header" style="padding: 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--glass-border);">
-        <button type="button" class="search-modal-close-btn" id="quran-search-modal-close" style="padding: 0.5rem; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+      <div class="quran-search-modal-header" style="padding: 1rem; display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--glass-border);">
+        <button type="button" class="search-modal-close-btn" id="quran-search-modal-close" style="padding: 0.5rem; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center;">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
+        <div style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
+          <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 32px;" />
+        </div>
         <div class="search-input-wrapper" style="flex: 1; display: flex; align-items: center; background: var(--bg-main); border-radius: 12px; padding: 0 0.75rem;">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input 
@@ -274,8 +287,19 @@ function renderDefaultView() {
     `;
   }
 
+  const brandHeroHTML = `
+    <div class="search-brand-hero" style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: linear-gradient(135deg, rgba(217, 138, 68, 0.12), rgba(168, 85, 247, 0.08)); border: 1px solid var(--glass-border); border-radius: 16px; margin-bottom: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.04);">
+      <img src="/logo.png" alt="Warteel Logo" style="height: 52px; width: auto; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));" />
+      <div>
+        <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); font-family: var(--font-arabic);">البحث الشامل في القرآن الكريم</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary); opacity: 0.85; margin-top: 0.2rem;">ابحث بالسور، الآيات، التفسير والبحث الصوتي</div>
+      </div>
+    </div>
+  `;
+
   container.innerHTML = `
     <div style="padding: 0.5rem;">
+      ${brandHeroHTML}
       ${recentHTML}
       ${quickHTML}
     </div>
@@ -383,7 +407,14 @@ function renderSearchResults(results, query) {
     return;
   }
 
-  let html = '';
+  let html = `
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px dashed var(--glass-border);">
+      <div style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">
+        نتائج البحث عن "<span style="color: var(--accent);">${query}</span>" (${toArabicNumeral(totalResults)})
+      </div>
+      <img src="/logo.png" alt="Warteel" style="height: 24px; width: auto; opacity: 0.85; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));" />
+    </div>
+  `;
 
   // Suggestions bar if present (e.g. typos corrected)
   if (results.didYouMean && results.didYouMean.length > 0 && results.ayahs.length > 0) {

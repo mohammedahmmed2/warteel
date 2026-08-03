@@ -55,6 +55,51 @@ export const state = {
   audioReciter: localStorage.getItem('audioReciter') || 'ar.alafasy'
 };
 
+// Parse URL parameters for direct deep-linking from Google / Social Shares
+(function parseURLParameters() {
+  try {
+    const searchString = window.location.search || (window.location.hash.includes('?') ? window.location.hash.substring(window.location.hash.indexOf('?')) : '');
+    const urlParams = new URLSearchParams(searchString);
+    
+    const surahParam = urlParams.get('surah');
+    const ayahParam = urlParams.get('ayah');
+    const juzParam = urlParams.get('juz');
+    const pageParam = urlParams.get('page');
+    const hadithParam = urlParams.get('hadith');
+    const bookParam = urlParams.get('book');
+    const hadithIdParam = urlParams.get('id') || urlParams.get('hadith_id');
+    const searchQuery = urlParams.get('q') || urlParams.get('search');
+    const adhkarParam = urlParams.get('adhkar');
+
+    if (surahParam) {
+      state.currentPage = 'quran-reader';
+      state.currentQuranPage = {
+        surah: parseInt(surahParam) || 1,
+        ayah: ayahParam ? parseInt(ayahParam) : null
+      };
+    } else if (juzParam) {
+      state.currentPage = 'quran-reader';
+      state.currentQuranPage = { juz: parseInt(juzParam) || 1 };
+    } else if (pageParam) {
+      state.currentPage = 'quran-reader';
+      state.currentQuranPage = { page: parseInt(pageParam) || 1 };
+    } else if (hadithParam || bookParam) {
+      state.currentPage = 'hadith';
+      state.hadithParams = {
+        book: bookParam || (isNaN(hadithParam) ? hadithParam : 'bukhari'),
+        id: hadithIdParam || (!isNaN(hadithParam) ? hadithParam : null)
+      };
+    } else if (adhkarParam) {
+      state.currentPage = 'adhkar';
+      state.currentAdhkarType = adhkarParam;
+    }
+
+    if (searchQuery) {
+      state.initialSearchQuery = searchQuery;
+    }
+  } catch (e) {}
+})();
+
 // Ensure we don't start on splash, welcome, or deprecated profile page
 if (['splash', 'welcome', 'profile'].includes(state.currentPage)) {
   state.currentPage = 'home';
@@ -134,7 +179,8 @@ export function App(rootElement) {
         routerView.appendChild(DuasPage(navigate));
         break;
       case 'hadith':
-        routerView.appendChild(HadithPage(navigate));
+        routerView.appendChild(HadithPage(navigate, state.hadithParams));
+        state.hadithParams = null;
         break;
       case 'settings':
       case 'profile':
@@ -157,6 +203,16 @@ export function App(rootElement) {
             <button class="btn btn-primary" onclick="window.location.reload()">${t('back')}</button>
           </div>
         `;
+    }
+
+    if (state.initialSearchQuery) {
+      const q = state.initialSearchQuery;
+      state.initialSearchQuery = null;
+      setTimeout(() => {
+        import('./components/SearchModal.js').then(m => {
+          m.openSearchModal(navigate, q);
+        });
+      }, 200);
     }
   };
 

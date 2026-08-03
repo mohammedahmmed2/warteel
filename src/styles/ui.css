@@ -35,6 +35,35 @@
   filter: drop-shadow(0 0 6px var(--primary));
 }
 
+/* App & Header Logo Styling */
+.app-header-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(217, 138, 68, 0.25));
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.app-header-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 4px 12px rgba(217, 138, 68, 0.4));
+}
+
+.dark-mode .app-header-logo {
+  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.15));
+}
+
+.search-modal-logo-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: rgba(217, 138, 68, 0.08);
+}
+
+
 .sidebar-nav-list {
   display: flex;
   flex-direction: column;

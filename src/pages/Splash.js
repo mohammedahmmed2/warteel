@@ -7,7 +7,7 @@ export function SplashScreen(navigate) {
   container.innerHTML = `
     <div class="splash-logo-container animate-float">
       <div class="logo-glow"></div>
-      <img src="/vite.svg" alt="${t('splash_title')}" class="splash-logo" /> <!-- Replace with actual logo -->
+      <img src="/logo.png" alt="${t('splash_title')}" class="splash-logo" />
       <h1 class="splash-title">${t('splash_title')}</h1>
       <p class="splash-slogan">${t('splash_slogan')}</p>
     </div>

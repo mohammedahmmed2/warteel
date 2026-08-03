@@ -74,8 +74,19 @@ export function DuasPage(navigate) {
     });
 
     container.innerHTML = `
+      <div class="app-bar" style="position: sticky; top: 0; z-index: 20; background: var(--app-bar-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border); padding: 0.75rem 0; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+        <div class="app-bar-icon" id="back-btn" style="cursor:pointer;" onclick="window.navigateHome()">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </div>
+        <div class="app-title" style="font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+          <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 28px;" />
+          <span>الأدعية المأثورة</span>
+        </div>
+        <div class="app-bar-icon" style="opacity: 0;"></div>
+      </div>
+
       <header style="margin-bottom: 1.5rem; text-align: center;">
-        <h2 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">الأدعية الأثرية والمأثورة 🤲</h2>
+        <h2 style="font-size: 1.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">الأدعية الأثرية والمأثورة 🤲</h2>
         <p style="color: var(--text-secondary); font-size: 0.95rem;">أدعية جامعة من القرآن الكريم والسنة النبوية الصحيحة</p>
       </header>
 

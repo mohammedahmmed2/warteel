@@ -14,7 +14,10 @@ export function QiblaPage(navigate) {
       <div class="app-bar-icon" id="qibla-back-btn" style="cursor: pointer;">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
       </div>
-      <div class="app-title">${t('nav_qibla')}</div>
+      <div class="app-title" style="display: flex; align-items: center; gap: 0.5rem;">
+        <img src="/logo.png" alt="Warteel" class="app-header-logo" style="height: 28px;" />
+        <span>${t('nav_qibla')}</span>
+      </div>
       <div class="app-bar-icon" style="opacity: 0;"></div>
     </div>
     

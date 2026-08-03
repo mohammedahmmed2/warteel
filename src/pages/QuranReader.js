@@ -4,6 +4,7 @@ import { openTafsirModal } from '../components/TafsirModal.js';
 import { openAsbabModal, preloadAsbabData, hasAsbabForAyah } from '../components/AsbabAlNuzulModal.js';
 import { openMeaningModal } from '../components/MeaningModal.js';
 import { getQuranData } from '../utils/quranData.js';
+import { updateQuranSurahSEO, updateSEO } from '../utils/seo.js';
 
 import { exportQuranToImage } from '../utils/quranImageGenerator.js';
 import { openImageThemeModal } from '../components/ImageThemeModal.js';
@@ -63,20 +64,18 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
   const stripDiacritics = (str) => {
     if (!str) return '';
     return str
-      // Remove all tashkeel/diacritics
-      .replace(/[\u064B-\u065F\u0670\u0653\u06DF\u06E0\u06E1\u06E2\u06E3\u06E4\u06E5\u06E6\u06E7\u06E8\u06EA\u06EB\u06EC\u06ED]/g, '')
-      // Normalize hamzat
-      .replace(/[\u0671\u0623\u0625\u0622\u0672\u0673]/g, '\u0627') // أإآٱ → ا
-      .replace(/\u0624/g, '\u0648') // ؤ → و
-      .replace(/\u0626/g, '\u064A') // ئ → ي
-      .replace(/\u0621/g, '') // ء (standalone hamza) → remove
-      // Normalize ta marbuta and alef maqsura
-      .replace(/\u0629/g, '\u0647') // ة → ه
-      .replace(/\u0649/g, '\u064A') // ى → ي
+      // Remove all tashkeel/diacritics & Quranic symbols
+      .replace(/[\u064B-\u065F\u0670\u0653\u06DF\u06E0\u06E1\u06E2\u06E3\u06E4\u06E5\u06E6\u06E7\u06E8\u06EA\u06EB\u06EC\u06ED\u06D6-\u06DE]/g, '')
+      // Normalize hamzat (أ إ آ ٱ ؤ ئ ء -> ا)
+      .replace(/[\u0671\u0623\u0625\u0622\u0672\u0673]/g, '\u0627')
+      .replace(/\u0624/g, '\u0648')
+      .replace(/\u0626/g, '\u064A')
+      .replace(/\u0621/g, '')
+      // Normalize ta marbuta and alef maqsura (ة -> ه, ى -> ي)
+      .replace(/\u0629/g, '\u0647')
+      .replace(/\u0649/g, '\u064A')
       // Remove tatweel (kashida)
       .replace(/\u0640/g, '')
-      // Remove common Quranic symbols
-      .replace(/[\u06D6-\u06DE]/g, '')
       .trim();
   };
 
@@ -85,10 +84,8 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     if (!a || !b) return Math.max((a || '').length, (b || '').length);
     if (a.length === 0) return b.length;
     if (b.length === 0) return a.length;
-    // Optimization: if lengths differ by more than half, skip
-    if (Math.abs(a.length - b.length) > Math.max(a.length, b.length) * 0.6) {
-      return Math.max(a.length, b.length);
-    }
+    if (Math.abs(a.length - b.length) > 3) return Math.max(a.length, b.length);
+    
     const matrix = [];
     for (let i = 0; i <= b.length; i++) matrix[i] = [i];
     for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
@@ -114,52 +111,51 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     return 1 - levenshtein(a, b) / maxLen;
   };
 
-  // Remove ال prefix for matching
+  // Remove common Arabic prefix combinations safely
   const stripAlPrefix = (word) => {
     if (!word) return '';
-    if (word.startsWith('وال') && word.length > 3) return word.substring(3);
-    if (word.startsWith('بال') && word.length > 3) return word.substring(3);
-    if (word.startsWith('فال') && word.length > 3) return word.substring(3);
-    if (word.startsWith('كال') && word.length > 3) return word.substring(3);
-    if (word.startsWith('لل') && word.length > 2) return word.substring(2);
-    if (word.startsWith('ال') && word.length > 2) return word.substring(2);
-    return word;
+    let w = word;
+    if ((w.startsWith('وال') || w.startsWith('بال') || w.startsWith('فال') || w.startsWith('كال')) && w.length > 4) {
+      return w.substring(3);
+    }
+    if (w.startsWith('لل') && w.length > 3) {
+      return w.substring(2);
+    }
+    if (w.startsWith('ال') && w.length > 3) {
+      return w.substring(2);
+    }
+    if ((w.startsWith('و') || w.startsWith('ف') || w.startsWith('ب')) && w.length > 3) {
+      return w.substring(1);
+    }
+    return w;
   };
 
-  // Advanced word matching with multiple strategies
+  // Precise Quranic Word Matching
   const wordsMatch = (spoken, expected) => {
     if (!spoken || !expected) return 0;
-    // 1. Exact match
     if (spoken === expected) return 1.0;
-    // 2. Strip al prefix and compare
-    const spokenBase = stripAlPrefix(spoken);
-    const expectedBase = stripAlPrefix(expected);
-    if (spokenBase === expectedBase && spokenBase.length >= 2) return 0.95;
-    // 3. One contains the other
-    if (spoken.length >= 3 && expected.length >= 3) {
-      if (expected.includes(spoken) || spoken.includes(expected)) return 0.85;
-      if (expectedBase.includes(spokenBase) || spokenBase.includes(expectedBase)) return 0.8;
+
+    const sNorm = stripDiacritics(spoken);
+    const eNorm = stripDiacritics(expected);
+    if (sNorm === eNorm) return 0.98;
+
+    const sBase = stripAlPrefix(sNorm);
+    const eBase = stripAlPrefix(eNorm);
+    if (sBase === eBase && sBase.length >= 2) return 0.92;
+
+    // Short words (length <= 3): require exact match or exact base match
+    if (sBase.length <= 3 || eBase.length <= 3) {
+      if (sBase === eBase) return 0.88;
+      return 0;
     }
-    // 4. Prefix match (at least 3 chars)
-    const minPrefixLen = Math.min(3, Math.min(spoken.length, expected.length));
-    if (minPrefixLen >= 2 && spoken.substring(0, minPrefixLen) === expected.substring(0, minPrefixLen)) {
-      const sim = similarity(spoken, expected);
-      if (sim >= 0.5) return sim;
-    }
-    // 5. Suffix match (last 3 chars)
-    if (spoken.length >= 3 && expected.length >= 3) {
-      if (spoken.substring(spoken.length - 3) === expected.substring(expected.length - 3)) {
-        const sim = similarity(spoken, expected);
-        if (sim >= 0.45) return sim;
-      }
-    }
-    // 6. Levenshtein similarity
-    const sim = similarity(spoken, expected);
-    if (sim >= 0.55) return sim;
-    // 7. Base form similarity
-    const baseSim = similarity(spokenBase, expectedBase);
-    if (baseSim >= 0.55) return baseSim * 0.9;
-    return 0;
+
+    // Long words: check distance limit
+    const dist = levenshtein(sBase, eBase);
+    const maxAllowed = sBase.length <= 5 ? 1 : 2;
+    if (dist > maxAllowed) return 0;
+
+    const score = 1 - (dist / Math.max(sBase.length, eBase.length));
+    return score >= 0.72 ? score : 0;
   };
 
   // N-gram sequence matching: match a sequence of spoken words against expected words
@@ -1159,6 +1155,11 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       headerSubtitle = isAr ? `${surahData.englishNameTranslation}` : surahData.englishName;
       headerMeta = `${surahData.revelationType === 'Meccan' ? 'مكية' : 'مدنية'} • ${surahData.ayahs.length} آية`;
       currentSurahNum = targetValue;
+      updateQuranSurahSEO(surahData, targetAyah);
+      try {
+        const newUrl = targetAyah ? `?surah=${targetValue}&ayah=${targetAyah}` : `?surah=${targetValue}`;
+        window.history.replaceState(null, '', newUrl);
+      } catch(e) {}
     } else if (renderType === 'juz') {
       ayahsToRender = quranData.surahs.flatMap(s => s.ayahs).filter(a => a.juz === targetValue);
       headerTitle = `الجزء ${toArabicNumeral(targetValue)}`;
@@ -1718,123 +1719,91 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
   };
 
-  // === CORE: Streaming Greedy Matcher ===
-  // Process transcript IMMEDIATELY — no debouncing, no accumulation
+  // === CORE: Sequential Frontier Word Tracker ===
   const matchTranscriptToWords = (transcript) => {
     if (!transcript || trackingWordIndex >= trackingWords.length) return;
     
-    // Deduplicate — skip if we just processed the exact same text
+    // Skip duplicate processing of identical string
     if (transcript === lastProcessedText) return;
     lastProcessedText = transcript;
     
     const spoken = stripDiacritics(transcript).split(/\s+/).filter(Boolean);
     if (!spoken.length) return;
 
-    let advanced = false;
+    // Use latest spoken tokens
+    const recentSpoken = spoken.slice(-8);
 
-    // --- Backtracking: only if last 3 spoken words match an earlier position ---
-    if (spoken.length >= 3 && trackingWordIndex >= 3) {
-      const tail = spoken.slice(-3);
-      const backLimit = Math.max(0, trackingWordIndex - 15);
-      for (let i = trackingWordIndex - 3; i >= backLimit; i--) {
-        let hits = 0;
-        for (let k = 0; k < 3; k++) {
-          if (wordsMatch(tail[k], trackingWords[i + k]?.cleanText || '') >= 0.5) hits++;
-        }
-        if (hits >= 2) {
-          for (let j = i; j < trackingWordIndex; j++) {
-            const cur = container.querySelector('#' + trackingWords[j].id);
-            if (cur) { cur.classList.remove('word-highlight-done', 'word-highlight-active'); }
+    // --- Backtracking Check (if reader repeated an earlier phrase) ---
+    if (trackingWordIndex > 1 && recentSpoken.length >= 2) {
+      const tail2 = recentSpoken.slice(-2);
+      const backLimit = Math.max(0, trackingWordIndex - 12);
+      for (let b = trackingWordIndex - 1; b >= backLimit; b--) {
+        if (wordsMatch(tail2[0], trackingWords[b]?.cleanText || '') >= 0.7 &&
+            wordsMatch(tail2[1], trackingWords[b + 1]?.cleanText || '') >= 0.7) {
+          // Unmark words from b to current
+          for (let i = b; i < trackingWordIndex; i++) {
+            const cur = container.querySelector('#' + trackingWords[i].id);
+            if (cur) cur.classList.remove('word-highlight-done', 'word-highlight-active');
           }
-          wordsReadCount = Math.max(0, wordsReadCount - (trackingWordIndex - i));
-          trackingWordIndex = i;
-          advanced = true;
-          updateTrackingStatus('🔄 رجوع');
-          break;
+          trackingWordIndex = b;
+          updateTrackingStatus('🔄 رجوع للمراجعة');
+          highlightWord(trackingWordIndex);
+          return;
         }
       }
     }
 
-    // --- Forward Greedy Matching ---
-    // Scan ALL spoken words and try to advance the pointer
-    if (!advanced) {
-      const lookahead = Math.min(trackingWordIndex + 8, trackingWords.length);
-      let bestIdx = -1;
-      let bestScore = 0;
+    // --- Strict Sequential Frontier Alignment ---
+    let targetPtr = trackingWordIndex;
 
-      // Check every spoken word against expected positions
-      for (let si = 0; si < spoken.length; si++) {
-        const w = spoken[si];
-        if (!w || w.length < 2) continue;
-        
-        for (let ei = trackingWordIndex; ei < lookahead; ei++) {
-          const expected = trackingWords[ei]?.cleanText || '';
-          if (!expected) continue;
-          
-          const score = wordsMatch(w, expected);
-          
-          // Position-aware threshold:
-          // Current word → very lenient (0.40)
-          // Next 2 words → moderate (0.50)  
-          // Further ahead → strict (0.70)
-          const gap = ei - trackingWordIndex;
-          const threshold = gap === 0 ? 0.40 : gap <= 2 ? 0.50 : 0.70;
-          
-          if (score >= threshold && (ei > bestIdx || (ei === bestIdx && score > bestScore))) {
-            bestIdx = ei;
-            bestScore = score;
-          }
-        }
-      }
+    for (let s = 0; s < recentSpoken.length && targetPtr < trackingWords.length; s++) {
+      const w = recentSpoken[s];
+      if (!w || w.length < 1) continue;
 
-      // Also try 2-word sequence matching for better accuracy
-      if (spoken.length >= 2) {
-        for (let si = spoken.length - 2; si >= Math.max(0, spoken.length - 8); si--) {
-          for (let ei = trackingWordIndex; ei < Math.min(lookahead, trackingWords.length - 1); ei++) {
-            const s1 = wordsMatch(spoken[si], trackingWords[ei]?.cleanText || '');
-            const s2 = wordsMatch(spoken[si + 1], trackingWords[ei + 1]?.cleanText || '');
-            if (s1 >= 0.40 && s2 >= 0.40) {
-              const avg = (s1 + s2) / 2;
-              if (ei + 1 > bestIdx || (ei + 1 === bestIdx && avg > bestScore)) {
-                bestIdx = ei + 1;
-                bestScore = avg;
-              }
-            }
-          }
-        }
-      }
+      const currExpected = trackingWords[targetPtr]?.cleanText || '';
+      const scoreCurr = wordsMatch(w, currExpected);
 
-      if (bestIdx >= trackingWordIndex) {
-        // Mark all words from current to bestIdx as done
-        for (let i = trackingWordIndex; i <= bestIdx; i++) {
-          const cur = container.querySelector('#' + trackingWords[i].id);
-          if (cur) {
-            cur.classList.remove('word-highlight-active');
-            cur.classList.add('word-highlight-done');
-          }
-          wordsReadCount++;
+      if (scoreCurr >= 0.7) {
+        // Direct match with active word
+        targetPtr++;
+      } else {
+        // Check if reader skipped 1 word (matches targetPtr + 1)
+        const nextExpected = trackingWords[targetPtr + 1]?.cleanText || '';
+        const scoreNext = wordsMatch(w, nextExpected);
+        if (scoreNext >= 0.75) {
+          targetPtr += 2; // Jump 1 skipped word
         }
-        trackingWordIndex = bestIdx + 1;
-        advanced = true;
-        lastMatchTime = Date.now();
-        updateConfidenceUI(bestScore * 100);
-        updateTrackingStatus('🎙️ جاري التتبع...');
       }
     }
 
-    // Confidence decay after 4s without match
-    if (!advanced && Date.now() - lastMatchTime > 4000) {
-      updateConfidenceUI(Math.max(15, matchConfidence - 3));
-      if (Date.now() - lastMatchTime > 8000) {
-        updateTrackingStatus('🔍 في انتظار التعرف...');
+    // If we advanced targetPtr
+    if (targetPtr > trackingWordIndex) {
+      for (let i = trackingWordIndex; i < targetPtr; i++) {
+        const cur = container.querySelector('#' + trackingWords[i].id);
+        if (cur) {
+          cur.classList.remove('word-highlight-active');
+          cur.classList.add('word-highlight-done');
+        }
+        wordsReadCount++;
       }
-    }
 
-    if (advanced) {
+      trackingWordIndex = targetPtr;
+      lastMatchTime = Date.now();
+      updateConfidenceUI(98);
+      updateTrackingStatus('🎙️ تتبع لحظي دقيق');
       highlightWord(trackingWordIndex);
+
       if (trackingWordIndex >= trackingWords.length) {
         stopTracking();
         showToastLocal('✅ اكتملت القراءة!');
+      }
+    } else {
+      // Confidence decay if no match for 4 seconds
+      if (Date.now() - lastMatchTime > 4000) {
+        updateConfidenceUI(Math.max(20, matchConfidence - 4));
+        if (Date.now() - lastMatchTime > 8000) {
+          updateTrackingStatus('🔍 في انتظار القراءة...');
+        }
       }
     }
   };
