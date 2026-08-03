@@ -40,7 +40,7 @@ export const state = {
   colorTajweed: localStorage.getItem('colorTajweed') !== 'false',
   wordByWordTranslation: localStorage.getItem('wordByWordTranslation') === 'true',
   copyBrackets: localStorage.getItem('copyBrackets') !== 'false',
-  copySymbol: localStorage.getItem('copySymbol') !== 'false',
+  copyAyahStyle: localStorage.getItem('copyAyahStyle') || 'modern',
   copyTashkeel: localStorage.getItem('copyTashkeel') !== 'false',
   copyMetadata: localStorage.getItem('copyMetadata') !== 'false',
   language: localStorage.getItem('language') || 'ar',

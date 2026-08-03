@@ -364,14 +364,15 @@ export function SettingsPage(navigate) {
           </div>
           <div class="setting-item">
             <div class="setting-info">
-              <label>رمز رقم الآية</label>
-              <span class="setting-desc">إضافة رمز ۝ للأرقام عند النسخ</span>
+              <label>نمط الترقيم عند النسخ</label>
+              <span class="setting-desc">شكل رقم الآية داخل النص المنسوخ</span>
             </div>
             <div class="setting-control">
-              <label class="settings-switch">
-                <input type="checkbox" id="copy-symbol-toggle" ${state.copySymbol ? 'checked' : ''}>
-                <span class="switch-slider"></span>
-              </label>
+              <select id="copy-ayah-style-select" class="premium-select" style="max-width:180px;">
+                <option value="modern" ${(!state.copyAyahStyle || state.copyAyahStyle === 'modern') ? 'selected' : ''}>(1) الحديث</option>
+                <option value="classic" ${(state.copyAyahStyle === 'classic' || (state.copyAyahStyle === undefined && state.copySymbol === true)) ? 'selected' : ''}>١ الكلاسيكي ۝</option>
+                <option value="none" ${(state.copyAyahStyle === 'none' || state.copySymbol === false) ? 'selected' : ''}>بدون رقم</option>
+              </select>
             </div>
           </div>
           <div class="setting-item">
@@ -592,11 +593,11 @@ export function SettingsPage(navigate) {
     });
   }
 
-  const copySymbolToggle = container.querySelector('#copy-symbol-toggle');
-  if (copySymbolToggle) {
-    copySymbolToggle.addEventListener('change', (e) => {
-      state.copySymbol = e.target.checked;
-      localStorage.setItem('copySymbol', state.copySymbol);
+  const copyAyahStyleSelect = container.querySelector('#copy-ayah-style-select');
+  if (copyAyahStyleSelect) {
+    copyAyahStyleSelect.addEventListener('change', (e) => {
+      state.copyAyahStyle = e.target.value;
+      localStorage.setItem('copyAyahStyle', state.copyAyahStyle);
     });
   }
 

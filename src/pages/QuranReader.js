@@ -1468,8 +1468,12 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
           }
           
           let formattedText = textToCopy;
-          if (state.copySymbol) {
+          const style = state.copyAyahStyle || 'modern';
+          
+          if (style === 'classic' || (style === undefined && state.copySymbol)) {
              formattedText += ` \u06DD${toArabicNumeral(aNum)}`;
+          } else if (style === 'modern') {
+             formattedText += ` (${aNum})`;
           }
           
           if (state.copyBrackets) {
@@ -2158,9 +2162,17 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
             finalText = stripDiacritics(finalText);
         }
         
-        if (state.copySymbol) {
+        const style = state.copyAyahStyle || 'modern';
+        if (style === 'classic' || (style === undefined && state.copySymbol)) {
             // Add Quranic end symbol to numbers
             finalText = finalText.replace(/([\u0660-\u0669\u06F0-\u06F9]+)/g, ' \u06DD$1');
+        } else if (style === 'modern') {
+            // Convert arabic numerals to english numerals and wrap in parentheses
+            finalText = finalText.replace(/([\u0660-\u0669\u06F0-\u06F9]+)/g, (match) => {
+                const enNum = match.replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 1632)
+                                   .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 1776);
+                return ` (${enNum})`;
+            });
         }
         
         // Clean up any double spaces that might have been introduced
