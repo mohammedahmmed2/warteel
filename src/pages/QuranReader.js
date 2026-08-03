@@ -982,7 +982,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     try {
       window.__translationData = window.__translationData || {};
       if (!window.__translationData['en.asad']) {
-        const res = await fetch('/src/quran/en.asad.json');
+        const res = await fetch('/quran/en.asad.json');
         window.__translationData['en.asad'] = await res.json();
       }
       const data = window.__translationData['en.asad'];
@@ -1363,7 +1363,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
                      const edition = window.appState?.tafsirEdition || 'ar.saadi';
                      window.__tafsirData = window.__tafsirData || {};
                      if (!window.__tafsirData[edition]) {
-                         const res = await fetch(`/src/quran/${edition}.json`);
+                         const res = await fetch(`/quran/${edition}.json`);
                          window.__tafsirData[edition] = await res.json();
                      }
                      const data = window.__tafsirData[edition];
@@ -1372,7 +1372,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
                   if (options?.meaning) {
                      window.__quranMuyassarData = window.__quranMuyassarData || null;
                      if (!window.__quranMuyassarData) {
-                         const res = await fetch('/src/quran/ar.muyassar.json');
+                         const res = await fetch('/quran/ar.muyassar.json');
                          window.__quranMuyassarData = await res.json();
                      }
                      const data = window.__quranMuyassarData;

@@ -31,7 +31,7 @@ export async function fetchQuranEdition(editionId) {
 
   try {
     if (!editionId || editionId === 'default' || editionId === 'quran-uthmani') {
-      const res = await fetch('/src/quran/quran.json');
+      const res = await fetch('/quran/quran.json');
       const data = await res.json();
       const actualData = data.data ? data.data : data;
       editionCache['default'] = actualData;
@@ -49,7 +49,7 @@ export async function fetchQuranEdition(editionId) {
     throw new Error('Invalid response from API');
   } catch (error) {
     console.error('Error fetching Quran edition:', error);
-    const res = await fetch('/src/quran/quran.json');
+    const res = await fetch('/quran/quran.json');
     const data = await res.json();
     return data.data ? data.data : data;
   }

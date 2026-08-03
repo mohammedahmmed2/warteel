@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/download_quran.js && node scripts/download_offline_data.cjs && node scripts/download-hadith.js && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "download-models": "node scripts/download-models.js",

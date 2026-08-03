@@ -47,7 +47,7 @@ export async function openMeaningModal(surahNum, ayahNumInSurah, ayahText) {
       `;
     } else {
       if (!window.__quranMuyassarData) {
-        const res = await fetch('/src/quran/ar.muyassar.json');
+        const res = await fetch('/quran/ar.muyassar.json');
         window.__quranMuyassarData = await res.json();
       }
       const data = window.__quranMuyassarData;

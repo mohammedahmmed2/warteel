@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dest = path.join(__dirname, '../src/quran/quran.json');
+const dest = path.join(__dirname, '../public/quran/quran.json');
 
 async function download() {
   console.log('Downloading Quran JSON...');

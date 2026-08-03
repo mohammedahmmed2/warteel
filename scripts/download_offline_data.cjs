@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
-const QURAN_DIR = path.join(__dirname, '..', 'src', 'quran');
+const QURAN_DIR = path.join(__dirname, '..', 'public', 'quran');
 const FONTS_DIR = path.join(__dirname, '..', 'src', 'fonts');
 
 if (!fs.existsSync(QURAN_DIR)) fs.mkdirSync(QURAN_DIR, { recursive: true });

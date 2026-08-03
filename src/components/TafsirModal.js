@@ -57,7 +57,7 @@ export async function openTafsirModal(surahNum, ayahNumInSurah, ayahText) {
     } else {
       window.__tafsirData = window.__tafsirData || {};
       if (!window.__tafsirData[edition]) {
-        const res = await fetch(`/src/quran/${edition}.json`);
+        const res = await fetch(`/quran/${edition}.json`);
         window.__tafsirData[edition] = await res.json();
       }
       
