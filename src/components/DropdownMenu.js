@@ -8,7 +8,7 @@ export function DropdownMenu(navigate, currentPage) {
     { id: 'home', icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>', label: t('nav_home') },
     { id: 'quran', icon: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>', label: t('nav_quran') },
     { id: 'qibla', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"></path>', label: t('nav_qibla') },
-    { id: 'tasbih', icon: '<circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path>', label: t('nav_tasbih') },
+    { id: 'tasbih', icon: '<circle cx="12" cy="9" r="6" stroke-dasharray="0 4.5" stroke-linecap="round"/><path d="M12 15v5M10 20h4" stroke-linecap="round"/>', label: t('nav_tasbih') },
     { id: 'adhkar', icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>', label: t('adhkar') },
     { id: 'hadith', icon: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>', label: t('hadith') },
     { id: 'worship-tracker', icon: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>', label: 'متتبع العبادات والمكافآت' },

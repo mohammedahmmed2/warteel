@@ -74,7 +74,7 @@ export function HomePage(navigate) {
   `;
 
   const features = [
-    { id: 'tasbih', label: t('tasbih'), icon: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>' },
+    { id: 'tasbih', label: t('tasbih'), icon: '<circle cx="12" cy="9" r="6" stroke-dasharray="0 4.5" stroke-linecap="round"/><path d="M12 15v5M10 20h4" stroke-linecap="round"/>' },
     { id: 'adhkar', label: t('adhkar'), icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>' },
     { id: 'qibla', label: t('feature_qibla'), icon: '<circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/>' },
     { id: 'hadith', label: t('hadith'), icon: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' }
