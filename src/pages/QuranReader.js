@@ -41,6 +41,14 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
   let wordsReadCount = 0;
   let wpmInterval = null;
   let visualizerInterval = null;
+  // Advanced tracking state
+  let transcriptAccumulator = ''; // Accumulates transcript across recognition sessions
+  let lastMatchTime = 0; // Timestamp of last successful match
+  let matchConfidence = 0; // Current confidence 0-100
+  let debounceTimer = null; // Debounce timer for transcript processing
+  let restartAttempts = 0; // For exponential backoff on restart
+  let analyserNode = null; // For real mic visualizer
+  let micDataArray = null; // Uint8Array for analyser
   // Fallback: old worker-based system
   let trackingWorker = null;
   let isTranscribing = false;
@@ -52,14 +60,125 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
   const hasWebSpeech = ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+  // === Advanced Phonetic Normalization ===
   const stripDiacritics = (str) => {
     if (!str) return '';
-    return str.replace(/[\u064B-\u065F\u0670\u0653]/g, '')
-              .replace(/\u0671/g, '\u0627').replace(/\u0623/g, '\u0627')
-              .replace(/\u0625/g, '\u0627').replace(/\u0622/g, '\u0627')
-              .replace(/\u0629/g, '\u0647').replace(/\u0649/g, '\u064A')
-              .replace(/\u0624/g, '\u0648').replace(/\u0626/g, '\u064A')
-              .trim();
+    return str
+      // Remove all tashkeel/diacritics
+      .replace(/[\u064B-\u065F\u0670\u0653\u06DF\u06E0\u06E1\u06E2\u06E3\u06E4\u06E5\u06E6\u06E7\u06E8\u06EA\u06EB\u06EC\u06ED]/g, '')
+      // Normalize hamzat
+      .replace(/[\u0671\u0623\u0625\u0622\u0672\u0673]/g, '\u0627') // أإآٱ → ا
+      .replace(/\u0624/g, '\u0648') // ؤ → و
+      .replace(/\u0626/g, '\u064A') // ئ → ي
+      .replace(/\u0621/g, '') // ء (standalone hamza) → remove
+      // Normalize ta marbuta and alef maqsura
+      .replace(/\u0629/g, '\u0647') // ة → ه
+      .replace(/\u0649/g, '\u064A') // ى → ي
+      // Remove tatweel (kashida)
+      .replace(/\u0640/g, '')
+      // Remove common Quranic symbols
+      .replace(/[\u06D6-\u06DE]/g, '')
+      .trim();
+  };
+
+  // Levenshtein distance for fuzzy matching
+  const levenshtein = (a, b) => {
+    if (!a || !b) return Math.max((a || '').length, (b || '').length);
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    // Optimization: if lengths differ by more than half, skip
+    if (Math.abs(a.length - b.length) > Math.max(a.length, b.length) * 0.6) {
+      return Math.max(a.length, b.length);
+    }
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[b.length][a.length];
+  };
+
+  // Similarity ratio (0 to 1)
+  const similarity = (a, b) => {
+    if (!a && !b) return 1;
+    if (!a || !b) return 0;
+    const maxLen = Math.max(a.length, b.length);
+    if (maxLen === 0) return 1;
+    return 1 - levenshtein(a, b) / maxLen;
+  };
+
+  // Remove ال prefix for matching
+  const stripAlPrefix = (word) => {
+    if (!word) return '';
+    if (word.startsWith('وال') && word.length > 3) return word.substring(3);
+    if (word.startsWith('بال') && word.length > 3) return word.substring(3);
+    if (word.startsWith('فال') && word.length > 3) return word.substring(3);
+    if (word.startsWith('كال') && word.length > 3) return word.substring(3);
+    if (word.startsWith('لل') && word.length > 2) return word.substring(2);
+    if (word.startsWith('ال') && word.length > 2) return word.substring(2);
+    return word;
+  };
+
+  // Advanced word matching with multiple strategies
+  const wordsMatch = (spoken, expected) => {
+    if (!spoken || !expected) return 0;
+    // 1. Exact match
+    if (spoken === expected) return 1.0;
+    // 2. Strip al prefix and compare
+    const spokenBase = stripAlPrefix(spoken);
+    const expectedBase = stripAlPrefix(expected);
+    if (spokenBase === expectedBase && spokenBase.length >= 2) return 0.95;
+    // 3. One contains the other
+    if (spoken.length >= 3 && expected.length >= 3) {
+      if (expected.includes(spoken) || spoken.includes(expected)) return 0.85;
+      if (expectedBase.includes(spokenBase) || spokenBase.includes(expectedBase)) return 0.8;
+    }
+    // 4. Prefix match (at least 3 chars)
+    const minPrefixLen = Math.min(3, Math.min(spoken.length, expected.length));
+    if (minPrefixLen >= 2 && spoken.substring(0, minPrefixLen) === expected.substring(0, minPrefixLen)) {
+      const sim = similarity(spoken, expected);
+      if (sim >= 0.5) return sim;
+    }
+    // 5. Suffix match (last 3 chars)
+    if (spoken.length >= 3 && expected.length >= 3) {
+      if (spoken.substring(spoken.length - 3) === expected.substring(expected.length - 3)) {
+        const sim = similarity(spoken, expected);
+        if (sim >= 0.45) return sim;
+      }
+    }
+    // 6. Levenshtein similarity
+    const sim = similarity(spoken, expected);
+    if (sim >= 0.55) return sim;
+    // 7. Base form similarity
+    const baseSim = similarity(spokenBase, expectedBase);
+    if (baseSim >= 0.55) return baseSim * 0.9;
+    return 0;
+  };
+
+  // N-gram sequence matching: match a sequence of spoken words against expected words
+  const sequenceMatch = (spokenWords, expectedWords, startIdx) => {
+    if (!spokenWords.length || startIdx >= expectedWords.length) return { score: 0, advance: 0 };
+    let totalScore = 0;
+    let matched = 0;
+    const maxCheck = Math.min(spokenWords.length, expectedWords.length - startIdx, 5);
+    for (let i = 0; i < maxCheck; i++) {
+      const score = wordsMatch(spokenWords[i], expectedWords[startIdx + i]?.cleanText || '');
+      if (score >= 0.5) {
+        totalScore += score;
+        matched++;
+      } else {
+        break;
+      }
+    }
+    return { score: matched > 0 ? totalScore / matched : 0, advance: matched };
   };
 
   // Screen Wake Lock
@@ -659,22 +778,28 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     <div class="reader-tap-hint" id="tap-hint"></div>
 
     <!-- Tracking status bar -->
-    <div class="tracking-status-bar" id="tracking-status" style="display:none !important; padding: 0.5rem 1rem; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.05); border-radius: 8px; margin-bottom: 1rem;">
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <div id="mic-visualizer" style="display: flex; gap: 2px; height: 16px; align-items: center;">
-          <!-- Bars generated via JS -->
-          <div class="bar" style="width: 3px; background: var(--accent); height: 4px; border-radius: 2px; transition: height 0.1s ease;"></div>
-          <div class="bar" style="width: 3px; background: var(--accent); height: 8px; border-radius: 2px; transition: height 0.1s ease;"></div>
-          <div class="bar" style="width: 3px; background: var(--accent); height: 12px; border-radius: 2px; transition: height 0.1s ease;"></div>
-          <div class="bar" style="width: 3px; background: var(--accent); height: 6px; border-radius: 2px; transition: height 0.1s ease;"></div>
-          <div class="bar" style="width: 3px; background: var(--accent); height: 10px; border-radius: 2px; transition: height 0.1s ease;"></div>
+    <div class="tracking-status-bar" id="tracking-status" style="display:none !important; padding: 0.6rem 1rem; justify-content: space-between; align-items: center; background: var(--glass-bg, rgba(0,0,0,0.05)); backdrop-filter: blur(10px); border-radius: 10px; margin-bottom: 0.75rem; border: 1px solid var(--glass-border, rgba(255,255,255,0.1)); gap: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+        <div id="mic-visualizer" style="display: flex; gap: 2px; height: 20px; align-items: center;">
+          <div class="bar" style="width: 3px; background: var(--accent); height: 4px; border-radius: 2px; transition: height 0.08s ease;"></div>
+          <div class="bar" style="width: 3px; background: var(--accent); height: 8px; border-radius: 2px; transition: height 0.08s ease;"></div>
+          <div class="bar" style="width: 3px; background: var(--accent); height: 12px; border-radius: 2px; transition: height 0.08s ease;"></div>
+          <div class="bar" style="width: 3px; background: var(--accent); height: 6px; border-radius: 2px; transition: height 0.08s ease;"></div>
+          <div class="bar" style="width: 3px; background: var(--accent); height: 10px; border-radius: 2px; transition: height 0.08s ease;"></div>
+          <div class="bar" style="width: 3px; background: var(--accent); height: 7px; border-radius: 2px; transition: height 0.08s ease;"></div>
+          <div class="bar" style="width: 3px; background: var(--accent); height: 14px; border-radius: 2px; transition: height 0.08s ease;"></div>
         </div>
-        <span style="font-size: 0.85rem; font-weight: bold; color: var(--accent);">جاري الاستماع...</span>
+        <span id="tracking-status-text" style="font-size: 0.8rem; font-weight: 600; color: var(--accent); white-space: nowrap;">🎙️ جاري الاستماع...</span>
       </div>
-      <div style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">
-        السرعة: <span id="wpm-counter" style="color: var(--accent);">0</span> كلمة/دقيقة
+      <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); flex-shrink: 0;">
+        <span style="display:flex; align-items:center; gap:3px;">
+          <span id="confidence-dot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; transition: background 0.3s;"></span>
+          <span id="confidence-value" style="color: var(--accent);">100%</span>
+        </span>
+        <span><span id="wpm-counter" style="color: var(--accent);">0</span> ك/د</span>
       </div>
     </div>
+
 
     <!-- Main content -->
     <div class="reader-content-wrapper">
@@ -1552,7 +1677,31 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
   });
 
-  // ============ VOICE TRACKING ============
+  // ============ VOICE TRACKING (Advanced Fuzzy Matching Engine) ============
+  
+  // Update confidence UI
+  const updateConfidenceUI = (confidence) => {
+    matchConfidence = Math.round(confidence);
+    const dot = container.querySelector('#confidence-dot');
+    const val = container.querySelector('#confidence-value');
+    if (dot && val) {
+      val.textContent = matchConfidence + '%';
+      if (matchConfidence >= 70) {
+        dot.style.background = '#22c55e'; // green
+      } else if (matchConfidence >= 40) {
+        dot.style.background = '#f59e0b'; // amber
+      } else {
+        dot.style.background = '#ef4444'; // red
+      }
+    }
+  };
+
+  // Update status text
+  const updateTrackingStatus = (text) => {
+    const el = container.querySelector('#tracking-status-text');
+    if (el) el.textContent = text;
+  };
+
   const highlightWord = (index) => {
     // Remove active from previous
     container.querySelectorAll('.word-highlight-active').forEach(el => {
@@ -1573,154 +1722,301 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
     }
   };
 
+  // === Advanced Matching Engine ===
   const matchTranscriptToWords = (transcript) => {
     if (!transcript || trackingWordIndex >= trackingWords.length) return;
-    const spoken = stripDiacritics(transcript).split(/\s+/).filter(Boolean);
+    
+    // Accumulate transcript for better matching
+    transcriptAccumulator = (transcriptAccumulator + ' ' + transcript).trim();
+    // Keep only last ~80 words in accumulator to prevent memory issues
+    const accWords = transcriptAccumulator.split(/\s+/);
+    if (accWords.length > 80) {
+      transcriptAccumulator = accWords.slice(-80).join(' ');
+    }
+    
+    const spoken = stripDiacritics(transcriptAccumulator).split(/\s+/).filter(Boolean);
     if (!spoken.length) return;
 
     let advanced = false;
-    const lastWords = spoken.slice(-10); // Check last 10 words
+    // Use last 20 words for matching (more context than before)
+    const recentWords = spoken.slice(-20);
 
-    // Loop to advance multiple words if they were spoken quickly in the same transcript
-    while (trackingWordIndex < trackingWords.length) {
-      let matchFoundIndex = -1;
-      let isBacktrack = false;
-      
-      // 1. Backtracking Logic: Check up to 15 words backward for repetition
-      const backtrackLimit = Math.max(0, trackingWordIndex - 15);
-      // Ensure we have at least 2 recent words to confirm a backtrack
-      const recentSpoken = lastWords.slice(-2);
-      if (recentSpoken.length === 2) {
-        for (let i = trackingWordIndex - 1; i >= backtrackLimit; i--) {
-          const expectedBack1 = trackingWords[i]?.cleanText;
-          const expectedBack2 = trackingWords[i+1]?.cleanText;
-          if (!expectedBack1 || !expectedBack2 || expectedBack1.length < 3) continue;
-          
-          // Match the sequence of 2 words
-          if ((recentSpoken[0] === expectedBack1 || expectedBack1.includes(recentSpoken[0])) &&
-              (recentSpoken[1] === expectedBack2 || expectedBack2.includes(recentSpoken[1]))) {
-            matchFoundIndex = i;
-            isBacktrack = true;
-            break;
+    // === Strategy 1: Backtracking Detection ===
+    // Check if user went back to re-read earlier words
+    const backtrackLimit = Math.max(0, trackingWordIndex - 20);
+    if (recentWords.length >= 2) {
+      const lastTwo = recentWords.slice(-3); // Check last 3 words
+      for (let i = trackingWordIndex - 2; i >= backtrackLimit; i--) {
+        let seqScore = 0;
+        let seqCount = 0;
+        for (let k = 0; k < Math.min(lastTwo.length, trackingWords.length - i); k++) {
+          const score = wordsMatch(lastTwo[k], trackingWords[i + k]?.cleanText || '');
+          if (score >= 0.5) {
+            seqScore += score;
+            seqCount++;
           }
         }
-      }
-
-      // 2. Lookahead Logic: Look ahead up to 6 words to prevent getting stuck during very fast reading
-      if (matchFoundIndex === -1) {
-        const lookaheadLimit = Math.min(trackingWordIndex + 6, trackingWords.length);
-        for (let i = trackingWordIndex; i < lookaheadLimit; i++) {
-          const expectedAhead = trackingWords[i]?.cleanText;
-          if (!expectedAhead) continue;
-          
-          const matchedAhead = lastWords.some(w => {
-            if (!w) return false;
-            if (w.length < 2 && w !== expectedAhead) return false;
-            return w === expectedAhead || expectedAhead.includes(w) || w.includes(expectedAhead) ||
-                   (w.length > 3 && expectedAhead.startsWith(w.substring(0, Math.min(w.length, 4))));
-          });
-
-          if (matchedAhead) {
-            matchFoundIndex = i;
-            break; // Found the closest matching word ahead
-          }
-        }
-      }
-
-      if (matchFoundIndex !== -1) {
-        if (isBacktrack) {
-          // Un-mark words if backtracking
-          for (let i = matchFoundIndex; i < trackingWordIndex; i++) {
-            const cur = container.querySelector('#' + trackingWords[i].id);
+        // Need at least 2 consecutive word matches for backtrack
+        if (seqCount >= 2 && seqScore / seqCount >= 0.6) {
+          // Un-mark words
+          for (let j = i; j < trackingWordIndex; j++) {
+            const cur = container.querySelector('#' + trackingWords[j].id);
             if (cur) {
               cur.classList.remove('word-highlight-done');
               cur.classList.remove('word-highlight-active');
             }
           }
-          // Adjust words read count down (but not below 0)
-          wordsReadCount = Math.max(0, wordsReadCount - (trackingWordIndex - matchFoundIndex));
-          trackingWordIndex = matchFoundIndex + 1; // Move to the word after the backtracked word
+          wordsReadCount = Math.max(0, wordsReadCount - (trackingWordIndex - i));
+          trackingWordIndex = i + seqCount;
           advanced = true;
-          break; // Stop loop and process the backtrack
-        } else {
-          // Mark all skipped words and the matched word as done
-          for (let i = trackingWordIndex; i <= matchFoundIndex; i++) {
-            const cur = container.querySelector('#' + trackingWords[i].id);
-            if (cur) {
-              cur.classList.remove('word-highlight-active');
-              cur.classList.add('word-highlight-done');
-            }
-            wordsReadCount++;
-          }
-          trackingWordIndex = matchFoundIndex + 1;
-          advanced = true;
+          updateConfidenceUI(seqScore / seqCount * 100);
+          updateTrackingStatus('🔄 تم الرجوع للتصحيح');
+          // Clear accumulator after backtrack
+          transcriptAccumulator = '';
+          break;
         }
-      } else {
-        // Stop advancing if neither the current nor the next few words were found
-        break;
+      }
+    }
+
+    // === Strategy 2: Forward Matching with Sliding Window ===
+    if (!advanced) {
+      let bestMatchIdx = -1;
+      let bestScore = 0;
+      let bestAdvance = 0;
+
+      // Scan forward up to 10 words ahead (handles skipping/fast reading)
+      const lookaheadLimit = Math.min(trackingWordIndex + 10, trackingWords.length);
+      
+      for (let i = trackingWordIndex; i < lookaheadLimit; i++) {
+        // Try matching with sliding windows of different sizes
+        for (let windowSize = Math.min(4, recentWords.length); windowSize >= 1; windowSize--) {
+          for (let wStart = Math.max(0, recentWords.length - windowSize - 3); wStart <= recentWords.length - windowSize; wStart++) {
+            const windowWords = recentWords.slice(wStart, wStart + windowSize);
+            const seq = sequenceMatch(windowWords, trackingWords, i);
+            
+            if (seq.advance >= 1 && seq.score > bestScore) {
+              // For single word match, require higher confidence
+              if (seq.advance === 1 && seq.score < 0.6) continue;
+              bestScore = seq.score;
+              bestMatchIdx = i;
+              bestAdvance = Math.max(seq.advance, 1);
+            }
+          }
+        }
+        
+        // Also try individual word matching (fallback)
+        if (bestMatchIdx === -1) {
+          for (const w of recentWords) {
+            const score = wordsMatch(w, trackingWords[i]?.cleanText || '');
+            if (score >= 0.55 && score > bestScore) {
+              // For single words, require higher threshold for non-adjacent words
+              if (i > trackingWordIndex + 2 && score < 0.7) continue;
+              bestScore = score;
+              bestMatchIdx = i;
+              bestAdvance = 1;
+            }
+          }
+        }
+      }
+
+      if (bestMatchIdx !== -1 && bestScore >= 0.5) {
+        // Mark all words from current to matched as done
+        for (let i = trackingWordIndex; i < bestMatchIdx + bestAdvance; i++) {
+          const cur = container.querySelector('#' + trackingWords[i].id);
+          if (cur) {
+            cur.classList.remove('word-highlight-active');
+            cur.classList.add('word-highlight-done');
+          }
+          wordsReadCount++;
+        }
+        trackingWordIndex = bestMatchIdx + bestAdvance;
+        advanced = true;
+        lastMatchTime = Date.now();
+        updateConfidenceUI(bestScore * 100);
+        updateTrackingStatus('🎙️ جاري الاستماع...');
+        
+        // Clear accumulator after successful match to avoid stale data
+        transcriptAccumulator = '';
+      }
+    }
+
+    // Update confidence decay if no match for a while
+    if (!advanced) {
+      const timeSinceMatch = Date.now() - lastMatchTime;
+      if (timeSinceMatch > 5000) {
+        updateConfidenceUI(Math.max(20, matchConfidence - 5));
+        updateTrackingStatus('🔍 في انتظار التعرف...');
       }
     }
 
     if (advanced) {
       highlightWord(trackingWordIndex);
       if (trackingWordIndex >= trackingWords.length) {
-        // Finished this surah/juz/page
         stopTracking();
         showToastLocal('✅ اكتملت القراءة!');
       }
     }
   };
 
-  // === Web Speech API ===
+  // === Real Microphone Visualizer ===
+  const startRealVisualizer = () => {
+    if (!audioContext || !mediaStream) return;
+    try {
+      analyserNode = audioContext.createAnalyser();
+      analyserNode.fftSize = 64;
+      analyserNode.smoothingTimeConstant = 0.7;
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      source.connect(analyserNode);
+      micDataArray = new Uint8Array(analyserNode.frequencyBinCount);
+      
+      const bars = container.querySelectorAll('#mic-visualizer .bar');
+      const animate = () => {
+        if (!isTracking || !analyserNode) return;
+        analyserNode.getByteFrequencyData(micDataArray);
+        // Map frequency bins to bars
+        const binSize = Math.floor(micDataArray.length / bars.length);
+        bars.forEach((bar, i) => {
+          let sum = 0;
+          for (let j = 0; j < binSize; j++) {
+            sum += micDataArray[i * binSize + j] || 0;
+          }
+          const avg = sum / binSize;
+          const height = Math.max(3, (avg / 255) * 20);
+          bar.style.height = `${height}px`;
+        });
+        visualizerInterval = requestAnimationFrame(animate);
+      };
+      animate();
+    } catch (e) {
+      // Fallback to random visualizer
+      startFakeVisualizer();
+    }
+  };
+
+  const startFakeVisualizer = () => {
+    const bars = container.querySelectorAll('#mic-visualizer .bar');
+    visualizerInterval = setInterval(() => {
+      if (!isTracking) return;
+      bars.forEach(bar => {
+        const h = Math.max(3, Math.random() * 18);
+        bar.style.height = `${h}px`;
+      });
+    }, 120);
+  };
+
+  // === Web Speech API (Enhanced) ===
   const startWebSpeechTracking = () => {
     if (!hasWebSpeech) {
-      showToastLocal('⚠️ متصفحك لا يدعم التعرف الصوتي');
+      showToastLocal('⚠️ متصفحك لا يدعم التعرف الصوتي. استخدم Chrome أو Edge');
       return false;
     }
+    
+    // Get mic stream for real visualizer
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaStream = stream;
+      audioContext = new AudioContext();
+      startRealVisualizer();
+    }).catch(() => {
+      startFakeVisualizer();
+    });
+
     recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = speechLangSelect.value || 'ar-SA';
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 5;
+
+    let interimBuffer = '';
+    let lastFinalTranscript = '';
 
     recognition.onstart = () => {
       isTracking = true;
+      restartAttempts = 0;
       voiceBtn.classList.add('recording');
       trackingStatusBar.classList.add('active');
       highlightWord(trackingWordIndex);
+      updateTrackingStatus('🎙️ جاري الاستماع...');
     };
 
     recognition.onresult = (event) => {
-      let transcript = '';
+      let finalTranscript = '';
+      let interimTranscript = '';
+      
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        // Use all alternatives
-        for (let j = 0; j < event.results[i].length; j++) {
-          transcript += event.results[i][j].transcript + ' ';
+        const result = event.results[i];
+        // Use best alternative + merge all alternatives for better coverage
+        if (result.isFinal) {
+          // Collect all alternatives for final results
+          let allAlts = '';
+          for (let j = 0; j < result.length; j++) {
+            allAlts += result[j].transcript + ' ';
+          }
+          finalTranscript += allAlts;
+        } else {
+          // For interim, use only best result
+          interimTranscript += result[0].transcript + ' ';
         }
       }
-      matchTranscriptToWords(transcript.trim());
+
+      // Process final results immediately with debounce
+      if (finalTranscript.trim() && finalTranscript.trim() !== lastFinalTranscript) {
+        lastFinalTranscript = finalTranscript.trim();
+        // Debounce: wait 200ms to batch rapid results
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          matchTranscriptToWords(lastFinalTranscript);
+        }, 200);
+      }
+
+      // Process interim results with longer debounce (only if no final result for a while)
+      if (interimTranscript.trim() && !finalTranscript.trim()) {
+        interimBuffer = interimTranscript.trim();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          // Only use interim if it's substantial enough (at least 2 words)
+          const words = interimBuffer.split(/\s+/).filter(Boolean);
+          if (words.length >= 2) {
+            matchTranscriptToWords(interimBuffer);
+          }
+        }, 600); // Longer debounce for interim results
+      }
     };
 
     recognition.onerror = (e) => {
+      if (e.error === 'not-allowed') {
+        showToastLocal('⚠️ يرجى السماح باستخدام الميكروفون');
+        stopTracking();
+        return;
+      }
+      if (e.error === 'network') {
+        updateTrackingStatus('⚠️ خطأ في الشبكة، جاري إعادة المحاولة...');
+      }
       if (e.error !== 'no-speech' && e.error !== 'aborted') {
         console.warn('Speech recognition error:', e.error);
-        if (e.error === 'not-allowed') {
-          showToastLocal('⚠️ يرجى السماح باستخدام الميكروفون');
-          stopTracking();
-        }
       }
     };
 
     recognition.onend = () => {
-      // Auto-restart if still tracking (browser stops after silence)
+      // Auto-restart with exponential backoff
       if (isTracking) {
+        restartAttempts++;
+        const delay = Math.min(300 * Math.pow(1.5, Math.min(restartAttempts - 1, 5)), 2000);
         setTimeout(() => {
           try { 
-            if (isTracking && recognition) recognition.start(); 
+            if (isTracking && recognition) {
+              recognition.start();
+              restartAttempts = Math.max(0, restartAttempts - 1); // Decay on success
+            }
           } catch (e) {
             console.warn('Restart error', e);
+            // Try again with longer delay
+            if (isTracking) {
+              setTimeout(() => {
+                try { if (isTracking && recognition) recognition.start(); } catch (e2) {}
+              }, 1000);
+            }
           }
-        }, 300); // 300ms delay prevents InvalidStateError
+        }, delay);
       }
     };
 
@@ -1768,6 +2064,10 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       source.connect(scriptProcessor);
       scriptProcessor.connect(gainNode);
       gainNode.connect(audioContext.destination);
+      
+      // Start real visualizer
+      startRealVisualizer();
+      
       audioBuffer = [];
       let totalSamples = 0;
       let chunkCount = 0;
@@ -1778,14 +2078,12 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
         totalSamples += channelData.length;
         
         // Keep last 5 seconds of audio (16000 * 5 = 80000)
-        // 80000 / 4096 = ~20 chunks
         if (audioBuffer.length > 20) {
           totalSamples -= audioBuffer[0].length;
           audioBuffer.shift();
         }
         
         chunkCount++;
-        // Send to worker every ~1.5s if free and we have enough data
         if (chunkCount >= 6 && !isTranscribing && trackingWorker && audioBuffer.length > 8) {
           chunkCount = 0;
           let merged = new Float32Array(totalSamples);
@@ -1807,27 +2105,47 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
 
   const stopTracking = () => {
     isTracking = false;
-    // Clear professional metrics intervals
+    // Clear timers
     if (wpmInterval) clearInterval(wpmInterval);
-    if (visualizerInterval) clearInterval(visualizerInterval);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (visualizerInterval) {
+      if (typeof visualizerInterval === 'number' && visualizerInterval > 1000) {
+        cancelAnimationFrame(visualizerInterval);
+      } else {
+        clearInterval(visualizerInterval);
+      }
+    }
     wpmInterval = null;
     visualizerInterval = null;
+    debounceTimer = null;
 
     // Stop Web Speech
     if (recognition) {
       try { recognition.stop(); recognition.abort(); } catch (e) {}
       recognition = null;
     }
-    // Stop worker/mic
+    // Stop mic/audio
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+    if (analyserNode) { try { analyserNode.disconnect(); } catch (e) {} }
     if (scriptProcessor) scriptProcessor.disconnect();
     if (audioContext) { try { audioContext.close(); } catch (e) {} }
     audioBuffer = [];
     mediaStream = null; audioContext = null; scriptProcessor = null;
+    analyserNode = null; micDataArray = null;
+
+    // Reset tracking state
+    transcriptAccumulator = '';
+    restartAttempts = 0;
+    matchConfidence = 0;
 
     voiceBtn.classList.remove('recording');
     trackingStatusBar.classList.remove('active');
     voiceIcon.innerHTML = `<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>`;
+    
+    // Reset visualizer bars
+    container.querySelectorAll('#mic-visualizer .bar').forEach(bar => {
+      bar.style.height = '3px';
+    });
   };
 
   const startTracking = () => {
@@ -1837,10 +2155,17 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       el.classList.remove('word-highlight-done', 'word-highlight-active');
     });
 
-    // Reset and start professional metrics
+    // Reset advanced tracking state
+    transcriptAccumulator = '';
+    lastMatchTime = Date.now();
+    matchConfidence = 100;
+    restartAttempts = 0;
+
+    // Reset metrics
     trackingStartTime = Date.now();
     wordsReadCount = 0;
     container.querySelector('#wpm-counter').textContent = '0';
+    updateConfidenceUI(100);
     
     // WPM Counter Interval
     wpmInterval = setInterval(() => {
@@ -1849,17 +2174,6 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       const wpm = elapsedMinutes > 0 ? Math.round(wordsReadCount / elapsedMinutes) : 0;
       container.querySelector('#wpm-counter').textContent = wpm;
     }, 1000);
-
-    // Visualizer Animation Interval
-    const bars = container.querySelectorAll('#mic-visualizer .bar');
-    visualizerInterval = setInterval(() => {
-      if (!isTracking) return;
-      bars.forEach(bar => {
-        // Randomize height between 4px and 16px to simulate voice activity
-        const h = Math.max(4, Math.random() * 16);
-        bar.style.height = `${h}px`;
-      });
-    }, 150);
 
     const model = state.aiModel || 'webspeech';
     if (model === 'webspeech' || model === '' ) {
