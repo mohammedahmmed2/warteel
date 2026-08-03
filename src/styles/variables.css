@@ -1,0 +1,443 @@
+/* src/styles/variables.css */
+:root, :root[data-theme="muslimeen"] {
+  /* Muslimeen Theme Colors (Light) */
+  --primary: #D98A44;
+  --primary-light: #E6A86B;
+  --primary-dark: #C27633;
+  --accent: #D98A44;
+  --accent-light: #E6A86B;
+  --accent-dark: #C27633;
+  --accent-bg: rgba(217, 138, 68, 0.1);
+
+  --bg-main: #FCF6EE; 
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FDF7F0;
+  --bg-gradient-start: #FDF3E7;
+  --bg-gradient-end: #F4E2CD;
+  --glass-border: rgba(217, 138, 68, 0.15);
+  
+  --text-primary: #4A3525; 
+  --text-secondary: #9C8F85; 
+  --text-muted: #C4BBB2;
+
+  --shadow-sm: 0 2px 4px rgba(74, 53, 37, 0.05);
+  --shadow-md: 0 4px 12px rgba(74, 53, 37, 0.08);
+  --shadow-lg: 0 12px 24px rgba(74, 53, 37, 0.08);
+  --shadow-glass: 0 8px 32px 0 rgba(74, 53, 37, 0.05);
+
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-full: 9999px;
+
+  --font-arabic: 'Almarai', 'Tajawal', 'Cairo', sans-serif;
+  --font-english: 'Almarai', 'Nunito', 'Poppins', sans-serif;
+  --quran-font: 'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif;
+
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* === UI Component Variables (Light) === */
+
+  /* Compass / Qibla */
+  --compass-dial-bg: radial-gradient(circle at center, #FFF4E6 0%, #FAE1C8 100%);
+  --compass-dial-border: #F3E5D8;
+  --compass-marks-color: #4A3525;
+  --compass-dot-color: #B59C82;
+  --kaaba-icon-bg: #FFFFFF;
+  --kaaba-icon-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+  /* Qibla Badge */
+  --qibla-badge-bg: #FDF4EB;
+  --qibla-badge-color: #D98A44;
+
+  /* Mushaf */
+  --mushaf-paper-bg: #FDF9F1;
+  --mushaf-border-color: rgba(217, 138, 68, 0.3);
+  --mushaf-footer-border: rgba(0,0,0,0.1);
+  --mushaf-shadow: 0 4px 20px rgba(0,0,0,0.08);
+
+  /* Dropdown / Select */
+  --dropdown-bg: #FFFFFF;
+  --dropdown-border: rgba(217, 138, 68, 0.2);
+  --dropdown-text: #4A3525;
+  --dropdown-hover-bg: #FDF7F0;
+  --dropdown-shadow: 0 8px 24px rgba(74, 53, 37, 0.12);
+
+  /* App Bar */
+  --app-bar-bg: rgba(252, 246, 238, 0.92);
+  --app-bar-border: rgba(217, 138, 68, 0.1);
+  --app-bar-shadow: 0 4px 20px rgba(74, 53, 37, 0.06);
+
+  /* Buttons */
+  --btn-icon-hover-bg: rgba(217, 138, 68, 0.12);
+  --btn-icon-active-bg: rgba(217, 138, 68, 0.2);
+  --btn-secondary-bg: #FFFFFF;
+  --btn-secondary-hover: #FDF7F0;
+
+  /* Reader Header */
+  --reader-header-bg: rgba(252, 246, 238, 0.96);
+
+  /* Sidebar */
+  --sidebar-bg: #FFFFFF;
+  --sidebar-active-bg: rgba(217, 138, 68, 0.12);
+  --sidebar-hover-bg: rgba(217, 138, 68, 0.06);
+
+  /* Selection / Highlight */
+  --word-highlight-active-bg: rgba(217, 138, 68, 0.25);
+  --word-highlight-active-color: #C27633;
+  --word-highlight-done-bg: rgba(217, 138, 68, 0.08);
+  --word-highlight-done-color: #D98A44;
+}
+
+/* =================== DARK MODE - MUSLIMEEN =================== */
+:root.dark-mode, :root[data-theme="muslimeen"].dark-mode {
+  /* Muslimeen Theme (Night Lantern) */
+  --bg-main: #1A120F;
+  --bg-card: #2B1E17;
+  --bg-card-hover: #3A281E;
+  --bg-gradient-start: #2B1E17;
+  --bg-gradient-end: #1A120F;
+  --glass-border: rgba(217, 138, 68, 0.18);
+  
+  --text-primary: #FDF6EE;
+  --text-secondary: #CBBDB0;
+  --text-muted: #9C8F85;
+  
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 10px rgba(217, 138, 68, 0.05);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(217, 138, 68, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(217, 138, 68, 0.06);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 20px rgba(217, 138, 68, 0.1);
+  
+  --primary-glow: 0 0 15px rgba(217, 138, 68, 0.3);
+
+  /* === UI Component Variables (Dark - Muslimeen) === */
+
+  /* Compass / Qibla */
+  --compass-dial-bg: radial-gradient(circle at center, #3A2818 0%, #2A1C10 100%);
+  --compass-dial-border: rgba(217, 138, 68, 0.3);
+  --compass-marks-color: #E6A86B;
+  --compass-dot-color: #D98A44;
+  --kaaba-icon-bg: #3A2818;
+  --kaaba-icon-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 8px rgba(217,138,68,0.15);
+
+  /* Qibla Badge */
+  --qibla-badge-bg: rgba(217, 138, 68, 0.15);
+  --qibla-badge-color: #E6A86B;
+
+  /* Mushaf */
+  --mushaf-paper-bg: #221810;
+  --mushaf-border-color: rgba(217, 138, 68, 0.2);
+  --mushaf-footer-border: rgba(255,255,255,0.08);
+  --mushaf-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 15px rgba(217,138,68,0.05);
+
+  /* Dropdown / Select */
+  --dropdown-bg: #2B1E17;
+  --dropdown-border: rgba(217, 138, 68, 0.25);
+  --dropdown-text: #FDF6EE;
+  --dropdown-hover-bg: #3A281E;
+  --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(217, 138, 68, 0.1);
+
+  /* App Bar */
+  --app-bar-bg: rgba(26, 18, 15, 0.95);
+  --app-bar-border: rgba(217, 138, 68, 0.12);
+  --app-bar-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 10px rgba(217, 138, 68, 0.05);
+
+  /* Buttons */
+  --btn-icon-hover-bg: rgba(217, 138, 68, 0.15);
+  --btn-icon-active-bg: rgba(217, 138, 68, 0.25);
+  --btn-secondary-bg: #2B1E17;
+  --btn-secondary-hover: #3A281E;
+
+  /* Reader Header */
+  --reader-header-bg: rgba(26, 18, 15, 0.97);
+
+  /* Sidebar */
+  --sidebar-bg: #2B1E17;
+  --sidebar-active-bg: rgba(217, 138, 68, 0.18);
+  --sidebar-hover-bg: rgba(217, 138, 68, 0.1);
+
+  /* Selection / Highlight */
+  --word-highlight-active-bg: rgba(217, 138, 68, 0.35);
+  --word-highlight-active-color: #F0B060;
+  --word-highlight-done-bg: rgba(217, 138, 68, 0.12);
+  --word-highlight-done-color: #E6A86B;
+}
+
+/* =================== PURPLE THEME =================== */
+:root[data-theme="purple"] {
+  --primary: #A855F7;
+  --primary-light: #C084FC;
+  --primary-dark: #9333EA;
+  --accent: #A855F7;
+  --accent-light: #C084FC;
+  --accent-dark: #9333EA;
+  --accent-bg: rgba(168, 85, 247, 0.1);
+
+  --bg-main: #F5F3FF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FAF8FF;
+  --bg-gradient-start: #EDE9FE;
+  --bg-gradient-end: #DDD6FE;
+  --glass-border: rgba(168, 85, 247, 0.12);
+
+  --text-primary: #2D1B69;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+
+  --shadow-sm: 0 2px 4px rgba(45, 27, 105, 0.05);
+  --shadow-md: 0 4px 12px rgba(45, 27, 105, 0.08);
+  --shadow-lg: 0 12px 24px rgba(45, 27, 105, 0.08);
+  --shadow-glass: 0 8px 32px 0 rgba(45, 27, 105, 0.06);
+
+  /* Compass */
+  --compass-dial-bg: radial-gradient(circle at center, #F0EBFF 0%, #E0D5FF 100%);
+  --compass-dial-border: #D8B4FE;
+  --compass-marks-color: #2D1B69;
+  --compass-dot-color: #A855F7;
+  --kaaba-icon-bg: #FFFFFF;
+  --kaaba-icon-shadow: 0 2px 8px rgba(168, 85, 247, 0.15);
+
+  --qibla-badge-bg: rgba(168, 85, 247, 0.1);
+  --qibla-badge-color: #A855F7;
+
+  --mushaf-paper-bg: #FDFBFF;
+  --mushaf-border-color: rgba(168, 85, 247, 0.2);
+  --mushaf-footer-border: rgba(168, 85, 247, 0.1);
+  --mushaf-shadow: 0 4px 20px rgba(168, 85, 247, 0.08);
+
+  --dropdown-bg: #FFFFFF;
+  --dropdown-border: rgba(168, 85, 247, 0.2);
+  --dropdown-text: #2D1B69;
+  --dropdown-hover-bg: #FAF8FF;
+  --dropdown-shadow: 0 8px 24px rgba(45, 27, 105, 0.12);
+
+  --app-bar-bg: rgba(245, 243, 255, 0.92);
+  --app-bar-border: rgba(168, 85, 247, 0.1);
+  --app-bar-shadow: 0 4px 20px rgba(45, 27, 105, 0.06);
+
+  --btn-icon-hover-bg: rgba(168, 85, 247, 0.12);
+  --btn-icon-active-bg: rgba(168, 85, 247, 0.2);
+  --btn-secondary-bg: #FFFFFF;
+  --btn-secondary-hover: #FAF8FF;
+
+  --reader-header-bg: rgba(245, 243, 255, 0.96);
+
+  --sidebar-bg: #FFFFFF;
+  --sidebar-active-bg: rgba(168, 85, 247, 0.12);
+  --sidebar-hover-bg: rgba(168, 85, 247, 0.06);
+
+  --word-highlight-active-bg: rgba(168, 85, 247, 0.25);
+  --word-highlight-active-color: #9333EA;
+  --word-highlight-done-bg: rgba(168, 85, 247, 0.08);
+  --word-highlight-done-color: #A855F7;
+}
+
+/* =================== PURPLE DARK =================== */
+:root[data-theme="purple"].dark-mode {
+  --primary: #C084FC;
+  --primary-light: #D8B4FE;
+  --primary-dark: #A855F7;
+  --accent: #C084FC;
+  --accent-light: #D8B4FE;
+  --accent-dark: #A855F7;
+  --accent-bg: rgba(192, 132, 252, 0.12);
+
+  --bg-main: #0D0B1A;
+  --bg-card: #17132B;
+  --bg-card-hover: #211C3A;
+  --bg-gradient-start: #17132B;
+  --bg-gradient-end: #0D0B1A;
+  --glass-border: rgba(192, 132, 252, 0.18);
+
+  --text-primary: #F5F0FF;
+  --text-secondary: #C4B5FD;
+  --text-muted: #8B5CF6;
+
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 10px rgba(192, 132, 252, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(192, 132, 252, 0.12);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(192, 132, 252, 0.1);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(192, 132, 252, 0.15);
+
+  --primary-glow: 0 0 15px rgba(192, 132, 252, 0.4);
+
+  --compass-dial-bg: radial-gradient(circle at center, #1E163A 0%, #150F2C 100%);
+  --compass-dial-border: rgba(192, 132, 252, 0.3);
+  --compass-marks-color: #C084FC;
+  --compass-dot-color: #A855F7;
+  --kaaba-icon-bg: #1E163A;
+  --kaaba-icon-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 8px rgba(192,132,252,0.2);
+
+  --qibla-badge-bg: rgba(192, 132, 252, 0.15);
+  --qibla-badge-color: #D8B4FE;
+
+  --mushaf-paper-bg: #13102A;
+  --mushaf-border-color: rgba(192, 132, 252, 0.2);
+  --mushaf-footer-border: rgba(255,255,255,0.08);
+  --mushaf-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 15px rgba(192,132,252,0.08);
+
+  --dropdown-bg: #17132B;
+  --dropdown-border: rgba(192, 132, 252, 0.25);
+  --dropdown-text: #F5F0FF;
+  --dropdown-hover-bg: #211C3A;
+  --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(192, 132, 252, 0.12);
+
+  --app-bar-bg: rgba(13, 11, 26, 0.95);
+  --app-bar-border: rgba(192, 132, 252, 0.12);
+  --app-bar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 10px rgba(192, 132, 252, 0.06);
+
+  --btn-icon-hover-bg: rgba(192, 132, 252, 0.15);
+  --btn-icon-active-bg: rgba(192, 132, 252, 0.25);
+  --btn-secondary-bg: #17132B;
+  --btn-secondary-hover: #211C3A;
+
+  --reader-header-bg: rgba(13, 11, 26, 0.97);
+
+  --sidebar-bg: #17132B;
+  --sidebar-active-bg: rgba(192, 132, 252, 0.18);
+  --sidebar-hover-bg: rgba(192, 132, 252, 0.1);
+
+  --word-highlight-active-bg: rgba(192, 132, 252, 0.3);
+  --word-highlight-active-color: #E9D5FF;
+  --word-highlight-done-bg: rgba(192, 132, 252, 0.12);
+  --word-highlight-done-color: #C084FC;
+}
+
+/* =================== TEAL THEME =================== */
+:root[data-theme="teal"] {
+  --primary: #14B8A6;
+  --primary-light: #2DD4BF;
+  --primary-dark: #0F766E;
+  --accent: #14B8A6;
+  --accent-light: #2DD4BF;
+  --accent-dark: #0F766E;
+  --accent-bg: rgba(20, 184, 166, 0.1);
+
+  --bg-main: #F0FDFA;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F5FFFE;
+  --bg-gradient-start: #CCFBF1;
+  --bg-gradient-end: #99F6E4;
+  --glass-border: rgba(20, 184, 166, 0.12);
+
+  --text-primary: #0F2A27;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+
+  --shadow-sm: 0 2px 4px rgba(15, 42, 39, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 42, 39, 0.08);
+  --shadow-lg: 0 12px 24px rgba(15, 42, 39, 0.08);
+  --shadow-glass: 0 8px 32px 0 rgba(15, 42, 39, 0.06);
+
+  --compass-dial-bg: radial-gradient(circle at center, #E6FFFC 0%, #CCFBF1 100%);
+  --compass-dial-border: #99F6E4;
+  --compass-marks-color: #0F2A27;
+  --compass-dot-color: #14B8A6;
+  --kaaba-icon-bg: #FFFFFF;
+  --kaaba-icon-shadow: 0 2px 8px rgba(20, 184, 166, 0.15);
+
+  --qibla-badge-bg: rgba(20, 184, 166, 0.1);
+  --qibla-badge-color: #0F766E;
+
+  --mushaf-paper-bg: #F7FFFD;
+  --mushaf-border-color: rgba(20, 184, 166, 0.2);
+  --mushaf-footer-border: rgba(20, 184, 166, 0.1);
+  --mushaf-shadow: 0 4px 20px rgba(20, 184, 166, 0.08);
+
+  --dropdown-bg: #FFFFFF;
+  --dropdown-border: rgba(20, 184, 166, 0.2);
+  --dropdown-text: #0F2A27;
+  --dropdown-hover-bg: #F5FFFE;
+  --dropdown-shadow: 0 8px 24px rgba(15, 42, 39, 0.12);
+
+  --app-bar-bg: rgba(240, 253, 250, 0.92);
+  --app-bar-border: rgba(20, 184, 166, 0.1);
+  --app-bar-shadow: 0 4px 20px rgba(15, 42, 39, 0.06);
+
+  --btn-icon-hover-bg: rgba(20, 184, 166, 0.12);
+  --btn-icon-active-bg: rgba(20, 184, 166, 0.2);
+  --btn-secondary-bg: #FFFFFF;
+  --btn-secondary-hover: #F5FFFE;
+
+  --reader-header-bg: rgba(240, 253, 250, 0.96);
+
+  --sidebar-bg: #FFFFFF;
+  --sidebar-active-bg: rgba(20, 184, 166, 0.12);
+  --sidebar-hover-bg: rgba(20, 184, 166, 0.06);
+
+  --word-highlight-active-bg: rgba(20, 184, 166, 0.25);
+  --word-highlight-active-color: #0F766E;
+  --word-highlight-done-bg: rgba(20, 184, 166, 0.08);
+  --word-highlight-done-color: #14B8A6;
+}
+
+/* =================== TEAL DARK =================== */
+:root[data-theme="teal"].dark-mode {
+  --primary: #2DD4BF;
+  --primary-light: #5EEAD4;
+  --primary-dark: #14B8A6;
+  --accent: #2DD4BF;
+  --accent-light: #5EEAD4;
+  --accent-dark: #14B8A6;
+  --accent-bg: rgba(45, 212, 191, 0.12);
+
+  --bg-main: #041210;
+  --bg-card: #0A1E1C;
+  --bg-card-hover: #102B28;
+  --bg-gradient-start: #0A1E1C;
+  --bg-gradient-end: #041210;
+  --glass-border: rgba(45, 212, 191, 0.18);
+
+  --text-primary: #F0FDFA;
+  --text-secondary: #99F6E4;
+  --text-muted: #14B8A6;
+
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 10px rgba(45, 212, 191, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(45, 212, 191, 0.12);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(45, 212, 191, 0.1);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 20px rgba(45, 212, 191, 0.15);
+
+  --primary-glow: 0 0 15px rgba(45, 212, 191, 0.3);
+
+  --compass-dial-bg: radial-gradient(circle at center, #0F2A28 0%, #071E1B 100%);
+  --compass-dial-border: rgba(45, 212, 191, 0.3);
+  --compass-marks-color: #5EEAD4;
+  --compass-dot-color: #2DD4BF;
+  --kaaba-icon-bg: #0F2A28;
+  --kaaba-icon-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 8px rgba(45,212,191,0.2);
+
+  --qibla-badge-bg: rgba(45, 212, 191, 0.15);
+  --qibla-badge-color: #5EEAD4;
+
+  --mushaf-paper-bg: #071715;
+  --mushaf-border-color: rgba(45, 212, 191, 0.2);
+  --mushaf-footer-border: rgba(255,255,255,0.08);
+  --mushaf-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 15px rgba(45,212,191,0.08);
+
+  --dropdown-bg: #0A1E1C;
+  --dropdown-border: rgba(45, 212, 191, 0.25);
+  --dropdown-text: #F0FDFA;
+  --dropdown-hover-bg: #102B28;
+  --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 15px rgba(45, 212, 191, 0.12);
+
+  --app-bar-bg: rgba(4, 18, 16, 0.95);
+  --app-bar-border: rgba(45, 212, 191, 0.12);
+  --app-bar-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 10px rgba(45, 212, 191, 0.06);
+
+  --btn-icon-hover-bg: rgba(45, 212, 191, 0.15);
+  --btn-icon-active-bg: rgba(45, 212, 191, 0.25);
+  --btn-secondary-bg: #0A1E1C;
+  --btn-secondary-hover: #102B28;
+
+  --reader-header-bg: rgba(4, 18, 16, 0.97);
+
+  --sidebar-bg: #0A1E1C;
+  --sidebar-active-bg: rgba(45, 212, 191, 0.18);
+  --sidebar-hover-bg: rgba(45, 212, 191, 0.1);
+
+  --word-highlight-active-bg: rgba(45, 212, 191, 0.3);
+  --word-highlight-active-color: #CCFBF1;
+  --word-highlight-done-bg: rgba(45, 212, 191, 0.12);
+  --word-highlight-done-color: #2DD4BF;
+}

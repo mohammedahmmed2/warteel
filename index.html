@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>وَرْتِيل | Warteel</title>
+    <!-- Add theme color for PWA / Mobile -->
+    <meta name="theme-color" content="#F4ECD8" />
+    
+
+
+    <script>
+      window.addEventListener('error', (e) => {
+        document.body.innerHTML += '<div style="color:red; padding:20px; z-index:9999; position:relative; background:white; direction:ltr;">Global Error: ' + e.message + '<br>' + e.filename + ':' + e.lineno + '</div>';
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        document.body.innerHTML += '<div style="color:red; padding:20px; z-index:9999; position:relative; background:white; direction:ltr;">Unhandled Promise: ' + e.reason + '</div>';
+      });
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

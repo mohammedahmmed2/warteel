@@ -1,0 +1,26 @@
+{
+  "name": "warteel",
+  "version": "1.0.0",
+  "description": "تطبيق ويب وسطح مكتب إسلامي شامل",
+  "author": "Siraj",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "download-models": "node scripts/download-models.js",
+    "download-hadith": "node scripts/download-hadith.js"
+  },
+  "devDependencies": {
+    "all-the-cities": "^3.1.0",
+    "cities.json": "^1.1.60",
+    "vite": "^8.1.1"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/cli": "^2.11.4",
+    "adhan": "^4.4.4"
+  }
+}
