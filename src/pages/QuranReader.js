@@ -477,7 +477,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       /* Mushaf view (inline/contiguous) */
       .mushaf-view {
         padding: 2rem 2.5rem;
-        font-family: var(--quran-font);
+        font-family: var(--quran-font) !important;
         font-size: var(--quran-font-size, 24px);
         line-height: 2.8;
         text-align: justify;
@@ -498,7 +498,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       .ayah-block.playing, .ayah-block.ayah-selected { background: var(--accent-bg) !important; transition: background 0.3s ease; }
 
       .ayah-arabic-text {
-        font-family: var(--quran-font);
+        font-family: var(--quran-font) !important;
         font-size: var(--quran-font-size, 24px);
         line-height: 2.2;
         color: var(--text-primary);
@@ -531,6 +531,7 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
       /* Trackable word */
       .trackable-word {
         display: inline;
+        font-family: inherit !important;
         transition: color 0.2s, background-color 0.2s;
         border-radius: 4px;
         cursor: pointer;
