@@ -806,12 +806,18 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
               <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="width:20px;height:20px;"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
               <label style="font-family:var(--font-arabic); font-size:1rem; font-weight:600; color:var(--text-primary); white-space:nowrap;">خط القراءة</label>
             </div>
-            <select id="quran-font-select" class="premium-select" style="max-width:240px;">
-              <option value="'Amiri Quran', serif">Amiri Quran — أميري</option>
-              <option value="'Scheherazade New', serif">Scheherazade — شهرزاد</option>
-              <option value="'Lateef', serif">Lateef — لطيف</option>
-              <option value="'Noto Naskh Arabic', serif">Noto Naskh — نسخ</option>
-              <option value="'Cairo', sans-serif">Cairo — كايرو</option>
+            <select id="quran-font-select" class="premium-select" style="max-width:260px;">
+              <option value="'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif">📖 مصحف المدينة (حفص الرسم العثماني)</option>
+              <option value="'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif">📜 عثمان طه النسخ</option>
+              <option value="'Amiri Quran', serif">📜 أميري مصحف (Amiri Quran)</option>
+              <option value="'Scheherazade New', serif">✒️ شهرزاد المصحف (Scheherazade)</option>
+              <option value="'Noto Naskh Arabic', serif">🖋️ النسخ الحديث (Noto Naskh)</option>
+              <option value="'Noto Kufi Arabic', sans-serif">🏛️ الكوفي الحديث (Noto Kufi)</option>
+              <option value="'Lateef', serif">🎨 لطيف القرآني (Lateef)</option>
+              <option value="'Aref Ruqaa', serif">✒️ خط الرقعة (Aref Ruqaa)</option>
+              <option value="'Tajawal', sans-serif">📱 تجول الحديث (Tajawal)</option>
+              <option value="'Cairo', sans-serif">🖥️ كايرو الحديث (Cairo)</option>
+              <option value="'Almarai', sans-serif">✨ المراعي الحديث (Almarai)</option>
             </select>
           </div>
           <div style="display:flex; align-items:center; gap:1.5rem;">
@@ -889,8 +895,10 @@ export function QuranReaderPage(navigate, params = { surah: 1 }, openMobileSideb
   const backBtn = container.querySelector('#back-btn');
 
   // Init font selects
-  const savedQuranFont = state.quranFont || "'Amiri Quran', serif";
-  fontSelect.value = savedQuranFont;
+  const savedQuranFont = state.quranFont || "'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif";
+  if (Array.from(fontSelect.options).some(opt => opt.value === savedQuranFont)) {
+    fontSelect.value = savedQuranFont;
+  }
   document.documentElement.style.setProperty('--quran-font', savedQuranFont);
 
   // Init model select

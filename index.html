@@ -44,10 +44,11 @@
           "query-input": "required name=search_term_string"
         }
       }
-    </script>
+    <!-- Google Fonts for Quran & Arabic Calligraphy -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=Amiri+Quran&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;600;700&family=Lateef:wght@400;600;700&family=Noto+Kufi+Arabic:wght@400;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Scheherazade+New:wght@400;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 
-
-    <script>
       window.addEventListener('error', (e) => {
         document.body.innerHTML += '<div style="color:red; padding:20px; z-index:9999; position:relative; background:white; direction:ltr;">Global Error: ' + e.message + '<br>' + e.filename + ':' + e.lineno + '</div>';
       });

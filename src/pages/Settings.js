@@ -199,13 +199,17 @@ export function SettingsPage(navigate) {
             </div>
             <div class="setting-control">
               <select id="quran-font-select" class="settings-select">
-                <option value="'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif" ${state.quranFont === "'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif" || !state.quranFont ? 'selected' : ''}>مجمع الملك فهد - حفص (الافتراضي)</option>
-                <option value="'KFGQPC Uthman Taha Naskh', serif" ${state.quranFont === "'KFGQPC Uthman Taha Naskh', serif" ? 'selected' : ''}>مجمع الملك فهد - عثمان طه</option>
-                <option value="'Amiri Quran', serif" ${state.quranFont === "'Amiri Quran', serif" ? 'selected' : ''}>Amiri Quran (أميري)</option>
-                <option value="'Scheherazade New', serif" ${state.quranFont === "'Scheherazade New', serif" ? 'selected' : ''}>Scheherazade (شهرزاد)</option>
-                <option value="'Me Quran', serif" ${state.quranFont === "'Me Quran', serif" ? 'selected' : ''}>Me Quran</option>
-                <option value="'Lateef', serif" ${state.quranFont === "'Lateef', serif" ? 'selected' : ''}>Lateef (لطيف)</option>
-                <option value="'Noto Naskh Arabic', serif" ${state.quranFont === "'Noto Naskh Arabic', serif" ? 'selected' : ''}>Noto Naskh (نسخ)</option>
+                <option value="'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif" ${state.quranFont === "'KFGQPC Uthmanic Script HAFS', 'Amiri Quran', serif" || !state.quranFont ? 'selected' : ''}>📖 مصحف المدينة (حفص الرسم العثماني)</option>
+                <option value="'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif" ${state.quranFont === "'KFGQPC Uthman Taha Naskh', 'Amiri Quran', serif" ? 'selected' : ''}>📜 عثمان طه النسخ</option>
+                <option value="'Amiri Quran', serif" ${state.quranFont === "'Amiri Quran', serif" ? 'selected' : ''}>📜 أميري مصحف (Amiri Quran)</option>
+                <option value="'Scheherazade New', serif" ${state.quranFont === "'Scheherazade New', serif" ? 'selected' : ''}>✒️ شهرزاد المصحف (Scheherazade)</option>
+                <option value="'Noto Naskh Arabic', serif" ${state.quranFont === "'Noto Naskh Arabic', serif" ? 'selected' : ''}>🖋️ النسخ الحديث (Noto Naskh)</option>
+                <option value="'Noto Kufi Arabic', sans-serif" ${state.quranFont === "'Noto Kufi Arabic', sans-serif" ? 'selected' : ''}>🏛️ الكوفي الحديث (Noto Kufi)</option>
+                <option value="'Lateef', serif" ${state.quranFont === "'Lateef', serif" ? 'selected' : ''}>🎨 لطيف القرآني (Lateef)</option>
+                <option value="'Aref Ruqaa', serif" ${state.quranFont === "'Aref Ruqaa', serif" ? 'selected' : ''}>✒️ خط الرقعة (Aref Ruqaa)</option>
+                <option value="'Tajawal', sans-serif" ${state.quranFont === "'Tajawal', sans-serif" ? 'selected' : ''}>📱 تجول الحديث (Tajawal)</option>
+                <option value="'Cairo', sans-serif" ${state.quranFont === "'Cairo', sans-serif" ? 'selected' : ''}>🖥️ كايرو الحديث (Cairo)</option>
+                <option value="'Almarai', sans-serif" ${state.quranFont === "'Almarai', sans-serif" ? 'selected' : ''}>✨ المراعي الحديث (Almarai)</option>
               </select>
             </div>
           </div>
